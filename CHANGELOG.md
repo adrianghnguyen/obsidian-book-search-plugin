@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [Unreleased]
+
+### Features
+
+* Store Google Books and Naver API credentials in Obsidian secretStorage (OS keychain) instead of synced `data.json`
+* Settings password fields stay empty, show configured/masked status, keep the existing key on empty Save, and require an explicit Clear to delete
+
+### Cloud E2E
+
+* Add `.cloud-e2e/secret-bindings.json` mapping `GOOGLE_BOOKS_API_KEY` / `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` to stable secret ids
+
 ### [0.7.5](https://github.com/anpigon/obsidian-book-search-plugin/compare/0.7.4...0.7.5) (2024-10-16)
 
 

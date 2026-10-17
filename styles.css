@@ -17,6 +17,12 @@
   display: none;
 }
 
+.book-search-plugin__secret-status {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  margin: 0 0 12px 0;
+}
+
 .book-search-plugin__show {
   display: flex;
 }

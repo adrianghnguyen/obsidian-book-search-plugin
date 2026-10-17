@@ -6,6 +6,14 @@ import { CursorJumper } from '@utils/cursor_jumper';
 import { Book } from '@models/book.model';
 import { BookSearchSettingTab, BookSearchPluginSettings, DEFAULT_SETTINGS } from '@settings/settings';
 import {
+  createSecretStore,
+  hydrateSecrets,
+  migrateLegacySecrets,
+  stripSecretsFromSettings,
+  type SecretStore,
+} from '@settings/secrets';
+import { factoryServiceProvider } from '@apis/base_api';
+import {
   getTemplateContents,
   applyTemplateTransformations,
   useTemplaterPluginInFile,
@@ -15,6 +23,7 @@ import { replaceVariableSyntax, makeFileName, applyDefaultFrontMatter, toStringF
 
 export default class BookSearchPlugin extends Plugin {
   settings: BookSearchPluginSettings;
+  private secretStore: SecretStore | null = null;
 
   async onload() {
     await this.loadSettings();
@@ -205,11 +214,43 @@ export default class BookSearchPlugin extends Plugin {
     });
   }
 
+  getSecretStore(): SecretStore {
+    if (!this.secretStore) {
+      this.secretStore = createSecretStore(this.app);
+    }
+    return this.secretStore;
+  }
+
+  async hydrateSecrets(): Promise<void> {
+    await hydrateSecrets(this.getSecretStore(), this.settings);
+  }
+
+  /**
+   * Search without opening the modal — used by Cloud E2E / eval probes.
+   * Keys come from secretStorage (hydrated into runtime settings).
+   */
+  async queryBooks(query: string, options?: Record<string, string>): Promise<Book[]> {
+    await this.hydrateSecrets();
+    return factoryServiceProvider(this.settings).getByQuery(query, options);
+  }
+
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const data = (await this.loadData()) as Partial<BookSearchPluginSettings> | undefined;
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+    try {
+      const store = this.getSecretStore();
+      const migrated = await migrateLegacySecrets(store, data);
+      await hydrateSecrets(store, this.settings);
+      if (migrated) {
+        await this.saveSettings();
+      }
+    } catch (err) {
+      console.warn(err);
+      this.showNotice(err);
+    }
   }
 
   async saveSettings() {
-    await this.saveData(this.settings);
+    await this.saveData(stripSecretsFromSettings(this.settings));
   }
 }

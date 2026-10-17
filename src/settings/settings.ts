@@ -5,6 +5,7 @@ import { ServiceProvider } from '@src/constants';
 import languages from '@utils/languages';
 import { SettingServiceProviderModal } from '@views/setting_service_provider_modal';
 import BookSearchPlugin from '../main';
+import { clearSecret, configuredSecretLabel, persistSecretIfProvided, SECRET_IDS } from './secrets';
 import { FileNameFormatSuggest } from './suggesters/FileNameFormatSuggester';
 import { FileSuggest } from './suggesters/FileSuggester';
 import { FolderSuggest } from './suggesters/FolderSuggester';
@@ -317,31 +318,42 @@ export class BookSearchSettingTab extends PluginSettingTab {
           });
       });
 
-    // Google API Settings
+    // Google API Settings — keys live in OS keychain, never in synced data.json
     this.createHeader('Google API Settings', containerEl);
     new Setting(containerEl)
       .setName('Description About Google API Settings')
       .setDesc(
-        '**WARNING** please use this field after you must understand Google Cloud API, such as API key security.',
+        '**WARNING** please use this field after you must understand Google Cloud API, such as API key security. The key is stored in the OS keychain (Obsidian secretStorage), not in vault data.json.',
       );
 
+    const apiKeyLength = this.plugin.settings.apiKey?.length ?? 0;
+    const apiKeyStatus = configuredSecretLabel(apiKeyLength);
+
     new Setting(containerEl)
-      .setName('Status Check')
-      .setDesc('check whether API key is saved. It does not guarantee that the API key is valid or invalid.')
+      .setName('Keychain status')
+      .setDesc('Shows whether a Google Books API key is saved. It does not guarantee that the key is valid.')
       .addButton(button => {
         button.setButtonText('API Check').onClick(async () => {
-          if (this.plugin.settings.apiKey.length) {
-            new Notice('API key exist.');
+          await this.plugin.hydrateSecrets();
+          const length = this.plugin.settings.apiKey?.length ?? 0;
+          if (length) {
+            new Notice(`API key configured (${length} characters).`);
           } else {
             new Notice('API key does not exist.');
           }
         });
       });
 
+    const statusEl = containerEl.createDiv({
+      cls: 'book-search-plugin__secret-status',
+      attr: { 'data-secret-status': apiKeyLength > 0 ? 'configured' : 'empty' },
+    });
+    statusEl.setText(apiKeyStatus);
+
     const googleAPISetDesc = document.createDocumentFragment();
-    googleAPISetDesc.createDiv({ text: 'Set your Books API key.' });
+    googleAPISetDesc.createDiv({ text: 'Set your Books API key. Stored in the OS keychain.' });
     googleAPISetDesc.createDiv({
-      text: 'For security reason, saved API key is not shown in this textarea after saved.',
+      text: 'The field stays empty. Leaving it blank and clicking Save keeps the existing key. Use Clear to delete.',
     });
     let tempKeyValue = '';
     new Setting(containerEl)
@@ -349,16 +361,40 @@ export class BookSearchSettingTab extends PluginSettingTab {
       .setDesc(googleAPISetDesc)
       .addText(text => {
         text.inputEl.type = 'password';
-        text.setValue('').onChange(async value => {
+        text.inputEl.setAttribute('autocomplete', 'off');
+        text.setPlaceholder(apiKeyLength > 0 ? '••••••••' : 'Paste API key');
+        text.setValue('').onChange(value => {
           tempKeyValue = value;
         });
       })
       .addButton(button => {
         button.setButtonText('Save Key').onClick(async () => {
-          this.plugin.settings.apiKey = tempKeyValue;
+          const result = await persistSecretIfProvided(
+            this.plugin.getSecretStore(),
+            SECRET_IDS.googleApiKey,
+            tempKeyValue,
+          );
+          if (result === 'unchanged') {
+            new Notice('Left empty — existing API key kept.');
+            return;
+          }
+          this.plugin.settings.apiKey = tempKeyValue.trim();
           await this.plugin.saveSettings();
-          new Notice('API key Saved');
+          new Notice('API key saved to OS keychain.');
+          this.display();
         });
+      })
+      .addButton(button => {
+        button
+          .setButtonText('Clear')
+          .setWarning()
+          .onClick(async () => {
+            await clearSecret(this.plugin.getSecretStore(), SECRET_IDS.googleApiKey);
+            this.plugin.settings.apiKey = '';
+            await this.plugin.saveSettings();
+            new Notice('API key cleared from OS keychain.');
+            this.display();
+          });
       });
   }
 }
