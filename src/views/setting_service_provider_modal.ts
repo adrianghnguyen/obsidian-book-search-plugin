@@ -1,6 +1,7 @@
 import { ServiceProvider } from '@src/constants';
 import BookSearchPlugin from '@src/main';
-import { clearSecret, configuredSecretLabel, persistSecretIfProvided, SECRET_IDS } from '@settings/secrets';
+import { addSecretLinkSetting } from '@settings/secret_link';
+import { linkedSecretLabel, resolveSecretId, SECRET_IDS } from '@settings/secrets';
 import { Modal, Notice, Setting } from 'obsidian';
 
 export class SettingServiceProviderModal extends Modal {
@@ -25,96 +26,62 @@ export class SettingServiceProviderModal extends Modal {
 
     contentEl.createEl('h2', { text: 'Service Provider Setting' });
     contentEl.createDiv({
-      text: 'Naver credentials are stored in the OS keychain, not in synced data.json.',
+      text: 'Link Naver credentials from Obsidian Secret Storage (OS keychain). Synced data.json stores only the secret ids.',
     });
 
+    const clientIdSecretId = resolveSecretId(this.settings.naverClientIdSecretId, SECRET_IDS.naverClientId);
+    const clientSecretSecretId = resolveSecretId(this.settings.naverClientSecretSecretId, SECRET_IDS.naverClientSecret);
     const clientIdLength = this.settings.naverClientId?.length ?? 0;
     const clientSecretLength = this.settings.naverClientSecret?.length ?? 0;
 
     contentEl.createDiv({
       cls: 'book-search-plugin__secret-status',
       attr: { 'data-secret-status': clientIdLength > 0 ? 'configured' : 'empty' },
-      text: `Client ID: ${configuredSecretLabel(clientIdLength)}`,
+      text: `Client ID: ${linkedSecretLabel(clientIdSecretId, clientIdLength)}`,
     });
     contentEl.createDiv({
       cls: 'book-search-plugin__secret-status',
       attr: { 'data-secret-status': clientSecretLength > 0 ? 'configured' : 'empty' },
-      text: `Client Secret: ${configuredSecretLabel(clientSecretLength)}`,
+      text: `Client Secret: ${linkedSecretLabel(clientSecretSecretId, clientSecretLength)}`,
     });
 
-    let tempClientId = '';
-    let tempClientSecret = '';
+    addSecretLinkSetting(this.app, contentEl, {
+      name: 'Client ID',
+      desc: 'Link an existing OS key or create a new one. Default id: obsidian-book-search-naver-client-id.',
+      secretId: clientIdSecretId,
+      onChange: async secretId => {
+        this.plugin.settings.naverClientIdSecretId = secretId || SECRET_IDS.naverClientId;
+        await this.plugin.hydrateSecrets();
+        await this.plugin.saveSettings();
+      },
+    });
 
-    new Setting(contentEl)
-      .setName('Client ID')
-      .setDesc('Leave blank and Save to keep the existing value. Use Clear to delete.')
-      .addText(text => {
-        text.inputEl.type = 'password';
-        text.inputEl.setAttribute('autocomplete', 'off');
-        text.setPlaceholder(clientIdLength > 0 ? '••••••••' : 'Paste Client ID');
-        text.setValue('').onChange(value => {
-          tempClientId = value;
-        });
-      });
+    addSecretLinkSetting(this.app, contentEl, {
+      name: 'Client Secret',
+      desc: 'Link an existing OS key or create a new one. Default id: obsidian-book-search-naver-client-secret.',
+      secretId: clientSecretSecretId,
+      onChange: async secretId => {
+        this.plugin.settings.naverClientSecretSecretId = secretId || SECRET_IDS.naverClientSecret;
+        await this.plugin.hydrateSecrets();
+        await this.plugin.saveSettings();
+      },
+    });
 
-    new Setting(contentEl)
-      .setName('Client Secret')
-      .setDesc('Leave blank and Save to keep the existing value. Use Clear to delete.')
-      .addText(text => {
-        text.inputEl.type = 'password';
-        text.inputEl.setAttribute('autocomplete', 'off');
-        text.setPlaceholder(clientSecretLength > 0 ? '••••••••' : 'Paste Client Secret');
-        text.setValue('').onChange(value => {
-          tempClientSecret = value;
-        });
-      });
-
-    new Setting(contentEl)
-      .addButton(btn =>
-        btn
-          .setButtonText('Save')
-          .setCta()
-          .onClick(async () => {
-            if (this.currentServiceProvider !== ServiceProvider.naver) {
-              this.close();
-              this.callback?.();
-              return;
-            }
-            const store = this.plugin.getSecretStore();
-            const idResult = await persistSecretIfProvided(store, SECRET_IDS.naverClientId, tempClientId);
-            const secretResult = await persistSecretIfProvided(store, SECRET_IDS.naverClientSecret, tempClientSecret);
-            if (idResult === 'saved') {
-              this.plugin.settings.naverClientId = tempClientId.trim();
-            }
-            if (secretResult === 'saved') {
-              this.plugin.settings.naverClientSecret = tempClientSecret.trim();
-            }
-            await this.plugin.saveSettings();
-            if (idResult === 'unchanged' && secretResult === 'unchanged') {
-              new Notice('Left empty — existing Naver credentials kept.');
-            } else {
-              new Notice('Naver credentials saved to OS keychain.');
-            }
+    new Setting(contentEl).addButton(btn =>
+      btn
+        .setButtonText('Done')
+        .setCta()
+        .onClick(() => {
+          if (this.currentServiceProvider !== ServiceProvider.naver) {
             this.close();
             this.callback?.();
-          }),
-      )
-      .addButton(btn =>
-        btn
-          .setButtonText('Clear')
-          .setWarning()
-          .onClick(async () => {
-            const store = this.plugin.getSecretStore();
-            await clearSecret(store, SECRET_IDS.naverClientId);
-            await clearSecret(store, SECRET_IDS.naverClientSecret);
-            this.plugin.settings.naverClientId = '';
-            this.plugin.settings.naverClientSecret = '';
-            await this.plugin.saveSettings();
-            new Notice('Naver credentials cleared from OS keychain.');
-            this.close();
-            this.callback?.();
-          }),
-      );
+            return;
+          }
+          new Notice('Naver secret links saved.');
+          this.close();
+          this.callback?.();
+        }),
+    );
   }
 
   onClose() {

@@ -6,11 +6,24 @@ export interface BookSearchSecretFields {
   naverClientSecret: string;
 }
 
+/** Synced `data.json` pointers — secret *ids*, never secret values. */
+export interface BookSearchSecretPointers {
+  apiKeySecretId: string;
+  naverClientIdSecretId: string;
+  naverClientSecretSecretId: string;
+}
+
 export const SECRET_IDS = {
   googleApiKey: 'obsidian-book-search-api-key',
   naverClientId: 'obsidian-book-search-naver-client-id',
   naverClientSecret: 'obsidian-book-search-naver-client-secret',
 } as const;
+
+export const DEFAULT_SECRET_POINTERS: BookSearchSecretPointers = {
+  apiKeySecretId: SECRET_IDS.googleApiKey,
+  naverClientIdSecretId: SECRET_IDS.naverClientId,
+  naverClientSecretSecretId: SECRET_IDS.naverClientSecret,
+};
 
 /** Cursor Cloud env names → secretStorage ids (see `.cloud-e2e/secret-bindings.json`). */
 export const EXPECTED_CURSOR_ENV = {
@@ -37,6 +50,32 @@ type SecretStorageLike = {
 
 export function configuredSecretLabel(length: number): string {
   return length > 0 ? `Configured (OS keychain, ${length} characters)` : 'Not configured';
+}
+
+export function linkedSecretLabel(secretId: string, length: number): string {
+  const id = secretId.trim() || '(none)';
+  return `${configuredSecretLabel(length)} · linked as ${id}`;
+}
+
+export function resolveSecretId(pointer: string | undefined, fallbackId: string): string {
+  const trimmed = pointer?.trim() ?? '';
+  return trimmed || fallbackId;
+}
+
+export async function readLinkedSecret(
+  store: SecretStore,
+  pointer: string | undefined,
+  fallbackId: string,
+): Promise<string> {
+  const id = resolveSecretId(pointer, fallbackId);
+  const primary = await store.get(id);
+  if (primary) {
+    return primary;
+  }
+  if (id !== fallbackId) {
+    return store.get(fallbackId);
+  }
+  return '';
 }
 
 export function stripSecretsFromSettings<T extends BookSearchSecretFields>(settings: T): T {
@@ -102,10 +141,17 @@ export async function clearSecret(store: SecretStore, id: string): Promise<void>
   await store.delete(id);
 }
 
-export async function hydrateSecrets(store: SecretStore, settings: BookSearchSecretFields): Promise<void> {
-  settings.apiKey = await store.get(SECRET_IDS.googleApiKey);
-  settings.naverClientId = await store.get(SECRET_IDS.naverClientId);
-  settings.naverClientSecret = await store.get(SECRET_IDS.naverClientSecret);
+export async function hydrateSecrets(
+  store: SecretStore,
+  settings: BookSearchSecretFields & Partial<BookSearchSecretPointers>,
+): Promise<void> {
+  settings.apiKey = await readLinkedSecret(store, settings.apiKeySecretId, SECRET_IDS.googleApiKey);
+  settings.naverClientId = await readLinkedSecret(store, settings.naverClientIdSecretId, SECRET_IDS.naverClientId);
+  settings.naverClientSecret = await readLinkedSecret(
+    store,
+    settings.naverClientSecretSecretId,
+    SECRET_IDS.naverClientSecret,
+  );
 }
 
 export async function migrateLegacySecrets(

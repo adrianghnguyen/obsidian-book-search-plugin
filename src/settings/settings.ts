@@ -5,12 +5,13 @@ import { ServiceProvider } from '@src/constants';
 import languages from '@utils/languages';
 import { SettingServiceProviderModal } from '@views/setting_service_provider_modal';
 import BookSearchPlugin from '../main';
-import { clearSecret, configuredSecretLabel, persistSecretIfProvided, SECRET_IDS } from './secrets';
+import { addSecretLinkSetting } from './secret_link';
+import { DEFAULT_SECRET_POINTERS, linkedSecretLabel, resolveSecretId, SECRET_IDS } from './secrets';
 import { FileNameFormatSuggest } from './suggesters/FileNameFormatSuggester';
 import { FileSuggest } from './suggesters/FileSuggester';
 import { FolderSuggest } from './suggesters/FolderSuggester';
 
-const docUrl = 'https://github.com/anpigon/obsidian-book-search-plugin';
+const docUrl = 'https://github.com/adrianghnguyen/obsidian-book-search-plugin';
 
 export enum DefaultFrontmatterKeyType {
   snakeCase = 'Snake Case',
@@ -30,6 +31,9 @@ export interface BookSearchPluginSettings {
   naverClientSecret: string;
   localePreference: string;
   apiKey: string;
+  apiKeySecretId: string;
+  naverClientIdSecretId: string;
+  naverClientSecretSecretId: string;
   openPageOnCompletion: boolean;
   showCoverImageInSearch: boolean;
   enableCoverImageSave: boolean;
@@ -51,6 +55,7 @@ export const DEFAULT_SETTINGS: BookSearchPluginSettings = {
   naverClientSecret: '',
   localePreference: 'default',
   apiKey: '',
+  ...DEFAULT_SECRET_POINTERS,
   openPageOnCompletion: true,
   showCoverImageInSearch: false,
   enableCoverImageSave: false,
@@ -77,6 +82,22 @@ export class BookSearchSettingTab extends PluginSettingTab {
     const header = document.createDocumentFragment();
     header.createEl('h2', { text: title });
     return new Setting(containerEl).setHeading().setName(header);
+  }
+
+  private createAboutSetting(containerEl: HTMLElement) {
+    const desc = document.createDocumentFragment();
+    desc.appendText('Maintained by ');
+    desc.createEl('a', {
+      text: 'Adrian Nguyen',
+      href: 'https://github.com/adrianghnguyen',
+    });
+    desc.appendText('. Forked from ');
+    desc.createEl('a', {
+      text: 'anpigon/obsidian-book-search-plugin',
+      href: 'https://github.com/anpigon/obsidian-book-search-plugin',
+    });
+    desc.appendText('.');
+    new Setting(containerEl).setName(`Book Search ${this.plugin.manifest.version}`).setDesc(desc);
   }
 
   private createFileLocationSetting(containerEl) {
@@ -158,6 +179,7 @@ export class BookSearchSettingTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.classList.add('book-search-plugin__settings');
 
+    this.createAboutSetting(containerEl);
     this.createGeneralSettings(containerEl);
     this.createTemplateFileSetting(containerEl);
 
@@ -318,20 +340,20 @@ export class BookSearchSettingTab extends PluginSettingTab {
           });
       });
 
-    // Google API Settings — keys live in OS keychain, never in synced data.json
+    // Google API Settings — values live in OS keychain; Settings stores the secret id.
     this.createHeader('Google API Settings', containerEl);
     new Setting(containerEl)
       .setName('Description About Google API Settings')
       .setDesc(
-        '**WARNING** please use this field after you must understand Google Cloud API, such as API key security. The key is stored in the OS keychain (Obsidian secretStorage), not in vault data.json.',
+        'Use a Google Books API key if you hit rate limits. Link an existing Obsidian secret or create one here. The key stays in OS keychain, not in vault data.json.',
       );
 
+    const apiKeySecretId = resolveSecretId(this.plugin.settings.apiKeySecretId, SECRET_IDS.googleApiKey);
     const apiKeyLength = this.plugin.settings.apiKey?.length ?? 0;
-    const apiKeyStatus = configuredSecretLabel(apiKeyLength);
 
     new Setting(containerEl)
       .setName('Keychain status')
-      .setDesc('Shows whether a Google Books API key is saved. It does not guarantee that the key is valid.')
+      .setDesc('Shows whether a Google Books API key is linked. It does not guarantee that the key is valid.')
       .addButton(button => {
         button.setButtonText('API Check').onClick(async () => {
           await this.plugin.hydrateSecrets();
@@ -348,53 +370,18 @@ export class BookSearchSettingTab extends PluginSettingTab {
       cls: 'book-search-plugin__secret-status',
       attr: { 'data-secret-status': apiKeyLength > 0 ? 'configured' : 'empty' },
     });
-    statusEl.setText(apiKeyStatus);
+    statusEl.setText(linkedSecretLabel(apiKeySecretId, apiKeyLength));
 
-    const googleAPISetDesc = document.createDocumentFragment();
-    googleAPISetDesc.createDiv({ text: 'Set your Books API key. Stored in the OS keychain.' });
-    googleAPISetDesc.createDiv({
-      text: 'The field stays empty. Leaving it blank and clicking Save keeps the existing key. Use Clear to delete.',
+    addSecretLinkSetting(this.app, containerEl, {
+      name: 'Google Books API key',
+      desc: 'Link an existing OS key or create a new one. Default id: obsidian-book-search-api-key.',
+      secretId: apiKeySecretId,
+      onChange: async secretId => {
+        this.plugin.settings.apiKeySecretId = secretId || SECRET_IDS.googleApiKey;
+        await this.plugin.hydrateSecrets();
+        await this.plugin.saveSettings();
+        this.display();
+      },
     });
-    let tempKeyValue = '';
-    new Setting(containerEl)
-      .setName('Set API Key')
-      .setDesc(googleAPISetDesc)
-      .addText(text => {
-        text.inputEl.type = 'password';
-        text.inputEl.setAttribute('autocomplete', 'off');
-        text.setPlaceholder(apiKeyLength > 0 ? '••••••••' : 'Paste API key');
-        text.setValue('').onChange(value => {
-          tempKeyValue = value;
-        });
-      })
-      .addButton(button => {
-        button.setButtonText('Save Key').onClick(async () => {
-          const result = await persistSecretIfProvided(
-            this.plugin.getSecretStore(),
-            SECRET_IDS.googleApiKey,
-            tempKeyValue,
-          );
-          if (result === 'unchanged') {
-            new Notice('Left empty — existing API key kept.');
-            return;
-          }
-          this.plugin.settings.apiKey = tempKeyValue.trim();
-          await this.plugin.saveSettings();
-          new Notice('API key saved to OS keychain.');
-          this.display();
-        });
-      })
-      .addButton(button => {
-        button
-          .setButtonText('Clear')
-          .setWarning()
-          .onClick(async () => {
-            await clearSecret(this.plugin.getSecretStore(), SECRET_IDS.googleApiKey);
-            this.plugin.settings.apiKey = '';
-            await this.plugin.saveSettings();
-            new Notice('API key cleared from OS keychain.');
-            this.display();
-          });
-      });
   }
 }
