@@ -4,8 +4,11 @@ import {
   configuredSecretLabel,
   createMemorySecretStore,
   hydrateSecrets,
+  linkedSecretLabel,
   migrateLegacySecrets,
   persistSecretIfProvided,
+  readLinkedSecret,
+  resolveSecretId,
   stripSecretsFromSettings,
   type BookSearchSecretFields,
 } from './secrets';
@@ -75,6 +78,29 @@ describe('secretStorage helpers', () => {
     expect(settings.naverClientSecret).toBe('sec');
   });
 
+  it('uses a linked secret id when the pointer is set', async () => {
+    const store = createMemorySecretStore({
+      [SECRET_IDS.googleApiKey]: 'default-google',
+      'shared-google-books-key': 'linked-google',
+    });
+    const settings = {
+      ...secretFields(),
+      apiKeySecretId: 'shared-google-books-key',
+    };
+
+    await hydrateSecrets(store, settings);
+
+    expect(settings.apiKey).toBe('linked-google');
+  });
+
+  it('falls back to the default id when the linked secret is empty', async () => {
+    const store = createMemorySecretStore({ [SECRET_IDS.googleApiKey]: 'default-google' });
+
+    expect(await readLinkedSecret(store, 'missing-link', SECRET_IDS.googleApiKey)).toBe('default-google');
+    expect(resolveSecretId('', SECRET_IDS.googleApiKey)).toBe(SECRET_IDS.googleApiKey);
+    expect(resolveSecretId('custom-id', SECRET_IDS.googleApiKey)).toBe('custom-id');
+  });
+
   it('migrates leftover data.json keys into the keychain once', async () => {
     const store = createMemorySecretStore();
 
@@ -102,5 +128,7 @@ describe('secretStorage helpers', () => {
     expect(configuredSecretLabel(12)).toBe('Configured (OS keychain, 12 characters)');
     expect(configuredSecretLabel(0)).toBe('Not configured');
     expect(configuredSecretLabel(12)).not.toContain('sk-');
+    expect(linkedSecretLabel(SECRET_IDS.googleApiKey, 12)).toContain(SECRET_IDS.googleApiKey);
+    expect(linkedSecretLabel(SECRET_IDS.googleApiKey, 12)).not.toContain('sk-');
   });
 });

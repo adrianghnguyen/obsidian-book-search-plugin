@@ -1,8 +1,10 @@
 # Obsidian Book Search Plugin
 
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/anpigon/obsidian-book-search-plugin/release.yml?logo=github)
-![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/anpigon/obsidian-book-search-plugin?sort=semver)
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/anpigon/obsidian-book-search-plugin/total)
+Maintained by [Adrian Nguyen](https://github.com/adrianghnguyen). Forked from [anpigon/obsidian-book-search-plugin](https://github.com/anpigon/obsidian-book-search-plugin).
+
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/adrianghnguyen/obsidian-book-search-plugin/release.yml?logo=github)
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/adrianghnguyen/obsidian-book-search-plugin?sort=semver)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/adrianghnguyen/obsidian-book-search-plugin/total)
 [![Korean](https://img.shields.io/badge/Language-한국어-blueviolet)](README.ko.md)
 
 Easily create book notes.
@@ -11,7 +13,7 @@ Easily create book notes.
 
 ## Changelog
 
-To view the changelog for the latest and previous versions, please click [here](https://github.com/anpigon/obsidian-book-search-plugin/releases) to visit the GitHub releases page for the Obsidian Book Search Plugin.
+To view the changelog for the latest and previous versions, please click [here](https://github.com/adrianghnguyen/obsidian-book-search-plugin/releases) to visit the GitHub releases page for this Book Search fork.
 
 <br>
 
@@ -297,15 +299,15 @@ Here's how to create and use one:
 - Enable the Books API for your project using the [Books API page](https://console.cloud.google.com/apis/library/books.googleapis.com)
 - Create an API key for your Google Cloud project using the [Google Cloud Credentials](https://console.cloud.google.com/apis/credentials) page
 - To limit the security risks of losing that key, you can edit it, and click on "Restrict key" under "API restrictions", then select only the "Books API" API
-- Add the API key to the settings of the Book Search plugin, under "Set API Key"
-- Once added, click on "Save", then "API Check"
+- In Book Search settings, under **Google Books API key**, link an existing Obsidian Secret Storage key or create a new one (default id `obsidian-book-search-api-key`)
+- Click **API Check** to confirm a key is linked (this does not validate the key with Google)
 
 
 <br>
 
 ## License
 
-[Obsidian Book Search Plugin](https://github.com/anpigon/obsidian-book-search-plugin) is licensed under the GNU AGPLv3 license. Refer to [LICENSE](https://github.com/SilentVoid13/Templater/blob/master/LICENSE.TXT) for more information.
+[Obsidian Book Search Plugin](https://github.com/adrianghnguyen/obsidian-book-search-plugin) is licensed under the GNU AGPLv3 license. Refer to [LICENSE](https://github.com/SilentVoid13/Templater/blob/master/LICENSE.TXT) for more information.
 
 <br>
 
@@ -313,17 +315,15 @@ Here's how to create and use one:
 
 Feel free to contribute.
 
-You can create an [issue](https://github.com/anpigon/obsidian-book-search-plugin/issues) to report a bug, suggest an improvement for this plugin, ask a question, etc.
+You can create an [issue](https://github.com/adrianghnguyen/obsidian-book-search-plugin/issues) to report a bug, suggest an improvement for this plugin, ask a question, etc.
 
-You can make a [pull request](https://github.com/anpigon/obsidian-book-search-plugin/pulls) to contribute to this plugin development.
+You can make a [pull request](https://github.com/adrianghnguyen/obsidian-book-search-plugin/pulls) to contribute to this plugin development.
 
 <br>
 
 ## Support
 
-If this plugin helped you and you wish to contribute :)
-
-Buy me coffee on [buymeacoffee.com/anpigon](https://www.buymeacoffee.com/anpigon)
+If the original plugin helped you, you can support [anpigon](https://www.buymeacoffee.com/anpigon):
 
 <a href="https://www.buymeacoffee.com/anpigon" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="60"></a>&nbsp;
 <a href="https://anpigon.github.io/buymeacoffee/"><img src="https://user-images.githubusercontent.com/3969643/184924261-f0224843-08fa-4bce-af70-dc5db589979f.png" height="60"></a>

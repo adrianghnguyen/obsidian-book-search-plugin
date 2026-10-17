@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [Unreleased]
 
+### [0.7.6-beta.2](https://github.com/adrianghnguyen/obsidian-book-search-plugin/compare/0.7.6-beta.1...0.7.6-beta.2) (2026-10-17)
+
+### Added
+
+* Google Books and Naver API key settings use Obsidian's native Secret Storage picker so you can link an existing OS key (or create one) without pasting into a password box
+* Settings tab shows maintainer Adrian Nguyen and a short forked-from credit for anpigon/obsidian-book-search-plugin
+
+### Changed
+
+* Plugin author in `manifest.json` is Adrian Nguyen (`https://github.com/adrianghnguyen`); the original project is credited as a fork, not as the live author
+* Minimum Obsidian version is 1.11.4 for SecretComponent / secretStorage link UI
+
 ### [0.7.6-beta.1](https://github.com/adrianghnguyen/obsidian-book-search-plugin/compare/0.7.5...0.7.6-beta.1) (2026-10-17)
 
 ### Added

@@ -1,7 +1,9 @@
 # 옵시디언 책 검색 플러그인
 
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/anpigon/obsidian-book-search-plugin/Release%20Obsidian%20plugin?logo=github)
-![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/anpigon/obsidian-book-search-plugin?sort=semver)
+[Adrian Nguyen](https://github.com/adrianghnguyen)이 유지보수합니다. 원본: [anpigon/obsidian-book-search-plugin](https://github.com/anpigon/obsidian-book-search-plugin).
+
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/adrianghnguyen/obsidian-book-search-plugin/release.yml?logo=github)
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/adrianghnguyen/obsidian-book-search-plugin?sort=semver)
 [![Korean](https://img.shields.io/badge/Language-English-blueviolet)](README.md)
 
 옵시디언에서 독서노트를 간단하게 생성할 수 있습니다.
