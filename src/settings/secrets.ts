@@ -14,8 +14,8 @@ export const SECRET_IDS = {
 
 /** Cursor Cloud env names → secretStorage ids (see `.cloud-e2e/secret-bindings.json`). */
 export const EXPECTED_CURSOR_ENV = {
-  googleApiKey: 'book_search_gcp',
-  googleApiKeyAlias: 'GOOGLE_BOOKS_API_KEY',
+  googleApiKey: 'GOOGLE_BOOKS_API_KEY',
+  googleApiKeyAlias: 'book_search_gcp',
   naverClientId: 'NAVER_CLIENT_ID',
   naverClientSecret: 'NAVER_CLIENT_SECRET',
 } as const;
