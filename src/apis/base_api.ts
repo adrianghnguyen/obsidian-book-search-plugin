@@ -34,11 +34,29 @@ function validateNaverSettings(settings: BookSearchPluginSettings): void {
   }
 }
 
-export async function apiGet<T>(
+export interface ApiHttpResponse<T = unknown> {
+  status: number;
+  bodyText: string;
+  data: T | null;
+}
+
+function readResponseBody(res: Awaited<ReturnType<typeof requestUrl>>): { bodyText: string; data: unknown } {
+  const data = res.json as unknown;
+  const text = res.text;
+  const bodyText =
+    typeof text === 'string' && text.length > 0
+      ? text
+      : data === undefined || data === null
+        ? ''
+        : JSON.stringify(data);
+  return { bodyText, data };
+}
+
+export async function apiGetHttp<T>(
   url: string,
   params: Record<string, string | number> = {},
   headers?: Record<string, string>,
-): Promise<T> {
+): Promise<ApiHttpResponse<T>> {
   const apiURL = new URL(url);
   appendQueryParams(apiURL, params);
 
@@ -46,13 +64,22 @@ export async function apiGet<T>(
     url: apiURL.href,
     method: 'GET',
     headers: {
-      Accept: '*/*',
-      'Content-Type': 'application/json; charset=utf-8',
+      Accept: 'application/json',
       ...headers,
     },
   });
 
-  return res.json as T;
+  const { bodyText, data } = readResponseBody(res);
+  return { status: res.status, bodyText, data: data as T | null };
+}
+
+export async function apiGet<T>(
+  url: string,
+  params: Record<string, string | number> = {},
+  headers?: Record<string, string>,
+): Promise<T> {
+  const response = await apiGetHttp<T>(url, params, headers);
+  return response.data as T;
 }
 
 function appendQueryParams(url: URL, params: Record<string, string | number>): void {

@@ -1,4 +1,5 @@
 import {
+  mapGoogleBooksConnectionResult,
   mapHttpStatusToConnectionResult,
   probeGoogleBooksConnection,
   probeNaverBooksConnection,
@@ -31,9 +32,17 @@ describe('api connection probe', () => {
     expect(mapHttpStatusToConnectionResult(500).outcome).toBe('unknown_error');
   });
 
-  it('returns not configured when Google key is empty', async () => {
-    const result = await probeGoogleBooksConnection('  ', mockRequest(200));
-    expect(result.outcome).toBe('not_configured');
+  it('probes anonymous route when Google key is empty', async () => {
+    let capturedUrl = '';
+    const request: ConnectionHttpRequest = async url => {
+      capturedUrl = url;
+      return { status: 200 };
+    };
+    const result = await probeGoogleBooksConnection('  ', request);
+    expect(result.outcome).toBe('connected');
+    expect(result.authRoute).toBe('anonymous_pool');
+    expect(capturedUrl).not.toContain('key=');
+    expect(result.detail).toContain('Shared anonymous pool');
   });
 
   it('probes Google Books with a minimal volumes URL', async () => {
@@ -52,14 +61,32 @@ describe('api connection probe', () => {
     expect(decodeURIComponent(capturedUrl)).toContain('key=test-key');
   });
 
-  it('maps Google HTTP 403 to key rejected', async () => {
-    const result = await probeGoogleBooksConnection('bad', mockRequest(403));
+  it('maps keyed Google HTTP 403 to key rejected with route detail', async () => {
+    const body = JSON.stringify({ error: { errors: [{ reason: 'keyInvalid' }] } });
+    const request: ConnectionHttpRequest = async () => ({ status: 403, bodyText: body });
+    const result = await probeGoogleBooksConnection('bad', request);
     expect(result.outcome).toBe('key_rejected');
+    expect(result.detail).toContain('Your API key:');
   });
 
-  it('maps Google HTTP 429 to quota exceeded', async () => {
-    const result = await probeGoogleBooksConnection('key', mockRequest(429));
+  it('maps Google HTTP 429 to quota exceeded with route detail', async () => {
+    const body = JSON.stringify({
+      error: {
+        errors: [{ reason: 'rateLimitExceeded' }],
+        details: [{ metadata: { quota_limit: 'defaultPerMinutePerUser' } }],
+      },
+    });
+    const request: ConnectionHttpRequest = async () => ({ status: 429, bodyText: body });
+    const result = await probeGoogleBooksConnection('key', request);
     expect(result.outcome).toBe('quota_exceeded');
+    expect(result.detail).toContain('Your API key:');
+  });
+
+  it('mapGoogleBooksConnectionResult distinguishes connected routes', () => {
+    const keyed = mapGoogleBooksConnectionResult(200, '', 'api_key');
+    expect(keyed.detail).toContain('Your API key');
+    const anon = mapGoogleBooksConnectionResult(200, '', 'anonymous_pool');
+    expect(anon.detail).toContain('Shared anonymous pool');
   });
 
   it('maps Google network errors', async () => {

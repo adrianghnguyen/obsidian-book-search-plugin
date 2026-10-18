@@ -11,6 +11,8 @@ export interface ApiConnectionUiOptions {
   runProbe: () => Promise<ApiConnectionResult>;
   /** When true, run one probe after mount if credentials are configured. */
   autoTestOnMount?: boolean;
+  /** Override default (i) tooltip before the first test run. */
+  readyDetail?: string;
 }
 
 export interface ApiConnectionUiHandle {
@@ -20,9 +22,11 @@ export interface ApiConnectionUiHandle {
 
 export function mountApiConnectionUi(options: ApiConnectionUiOptions): ApiConnectionUiHandle {
   let outcome: ApiConnectionOutcome = options.isConfigured() ? 'not_configured' : 'not_configured';
-  let tooltipDetail = options.isConfigured()
-    ? 'Credentials are linked. Run Test connection to verify them against the live API.'
-    : 'Link the required secrets above before testing.';
+  let tooltipDetail =
+    options.readyDetail ??
+    (options.isConfigured()
+      ? 'Credentials are linked. Run Test connection to verify them against the live API.'
+      : 'Link the required secrets above before testing.');
 
   let statusRow: HTMLElement | undefined;
   let statusLine: HTMLElement | undefined;

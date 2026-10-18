@@ -7,6 +7,7 @@ import { SettingServiceProviderModal } from '@views/setting_service_provider_mod
 import BookSearchPlugin from '../main';
 import { probeGoogleBooksConnection } from './api_connection_probe';
 import { mountApiConnectionUi } from './api_connection_ui';
+import { mountGoogleBooksRouteSetting } from './google_books_route_setting';
 import { addSecretLinkSetting } from './secret_link';
 import { DEFAULT_SECRET_POINTERS, resolveSecretId, SECRET_IDS } from './secrets';
 import { FileNameFormatSuggest } from './suggesters/FileNameFormatSuggester';
@@ -347,10 +348,12 @@ export class BookSearchSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Description About Google API Settings')
       .setDesc(
-        'Use a Google Books API key if you hit rate limits. Link an existing Obsidian secret or create one here. The key stays in OS keychain, not in vault data.json.',
+        'Without a linked key, searches use Google’s shared anonymous pool (strict limits). Link your own Books API key for production use. Secrets stay in OS keychain, not vault data.json.',
       );
 
     const apiKeySecretId = resolveSecretId(this.plugin.settings.apiKeySecretId, SECRET_IDS.googleApiKey);
+
+    const routeSetting = mountGoogleBooksRouteSetting(containerEl, () => this.plugin.settings.apiKey);
 
     addSecretLinkSetting(this.app, containerEl, {
       name: 'Google Books API key',
@@ -359,6 +362,7 @@ export class BookSearchSettingTab extends PluginSettingTab {
       onChange: async secretId => {
         this.plugin.settings.apiKeySecretId = secretId || SECRET_IDS.googleApiKey;
         await this.plugin.hydrateSecrets();
+        routeSetting.refresh();
         await this.plugin.saveSettings();
         this.display();
       },
@@ -367,10 +371,13 @@ export class BookSearchSettingTab extends PluginSettingTab {
     mountApiConnectionUi({
       containerEl,
       name: 'Google Books API connection',
-      desc: 'Live check against Google Books using your linked key (same as search).',
-      isConfigured: () => (this.plugin.settings.apiKey?.trim().length ?? 0) > 0,
+      desc: 'Live check on the same route as search (your key or the shared anonymous pool).',
+      isConfigured: () => true,
+      readyDetail:
+        'Tests the active search route shown above. Outcomes name whether the failure is on your API key or the shared anonymous pool.',
       runProbe: async () => {
         await this.plugin.hydrateSecrets();
+        routeSetting.refresh();
         return probeGoogleBooksConnection(this.plugin.settings.apiKey);
       },
     });

@@ -23,6 +23,21 @@
   margin: 0 0 12px 0;
 }
 
+.book-search-plugin__google-route-line {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  margin-top: 0.35em;
+  line-height: 1.4;
+}
+
+.book-search-plugin__google-route-line[data-google-books-route='api_key'] {
+  color: var(--text-normal);
+}
+
+.book-search-plugin__google-route-line[data-google-books-route='anonymous_pool'] {
+  color: var(--text-warning);
+}
+
 .book-search-plugin__api-connection {
   display: flex;
   align-items: center;

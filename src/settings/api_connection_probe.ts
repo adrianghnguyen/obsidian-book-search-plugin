@@ -1,3 +1,5 @@
+import { connectionDetailForGoogleBooksError, parseGoogleBooksErrorBody } from '@apis/google_books_errors';
+import { authRoutePrefix, resolveGoogleBooksAuthRoute, type GoogleBooksAuthRoute } from '@apis/google_books_auth';
 import { requestUrl } from 'obsidian';
 
 export type ApiConnectionOutcome =
@@ -14,9 +16,13 @@ export interface ApiConnectionResult {
   httpStatus?: number;
   /** Longer hint for (i) tooltip — never includes secret material. */
   detail: string;
+  authRoute?: GoogleBooksAuthRoute;
 }
 
-export type ConnectionHttpRequest = (url: string, headers?: Record<string, string>) => Promise<{ status: number }>;
+export type ConnectionHttpRequest = (
+  url: string,
+  headers?: Record<string, string>,
+) => Promise<{ status: number; bodyText?: string }>;
 
 const GOOGLE_PROBE_URL = 'https://www.googleapis.com/books/v1/volumes';
 const NAVER_PROBE_URL = 'https://openapi.naver.com/v1/search/book.json';
@@ -71,21 +77,61 @@ export function mapHttpStatusToConnectionResult(status: number): ApiConnectionRe
   };
 }
 
+export function mapGoogleBooksConnectionResult(
+  status: number,
+  bodyText: string | undefined,
+  authRoute: GoogleBooksAuthRoute,
+): ApiConnectionResult {
+  if (status === 200) {
+    const routeLabel = authRoute === 'api_key' ? 'Your API key' : 'Shared anonymous pool';
+    return {
+      outcome: 'connected',
+      httpStatus: status,
+      authRoute,
+      detail: `${routeLabel}: Google Books responded successfully on this route.`,
+    };
+  }
+
+  const parsed = parseGoogleBooksErrorBody(status, bodyText ?? '');
+  const detail = connectionDetailForGoogleBooksError(parsed, authRoute);
+  let outcome: ApiConnectionOutcome = 'unknown_error';
+
+  if (authRoute === 'anonymous_pool' && (status === 429 || status === 403)) {
+    outcome = 'quota_exceeded';
+  } else if (status === 400 || (status === 403 && parsed.legacyReason !== 'accessNotConfigured')) {
+    outcome = authRoute === 'api_key' ? 'key_rejected' : 'quota_exceeded';
+  } else if (status === 403 && parsed.legacyReason === 'accessNotConfigured') {
+    outcome = 'key_rejected';
+  } else if (status === 429) {
+    outcome = 'quota_exceeded';
+  }
+
+  return { outcome, httpStatus: status, detail, authRoute };
+}
+
 export function notConfiguredConnectionResult(detail: string): ApiConnectionResult {
   return { outcome: 'not_configured', detail };
 }
 
-async function defaultConnectionRequest(url: string, headers?: Record<string, string>): Promise<{ status: number }> {
+async function defaultConnectionRequest(
+  url: string,
+  headers?: Record<string, string>,
+): Promise<{ status: number; bodyText?: string }> {
   const res = await requestUrl({
     url,
     method: 'GET',
     headers: {
-      Accept: '*/*',
-      'Content-Type': 'application/json; charset=utf-8',
+      Accept: 'application/json',
       ...headers,
     },
   });
-  return { status: res.status };
+  const bodyText =
+    typeof res.text === 'string' && res.text.length > 0
+      ? res.text
+      : res.json === undefined || res.json === null
+        ? ''
+        : JSON.stringify(res.json);
+  return { status: res.status, bodyText };
 }
 
 export async function probeGoogleBooksConnection(
@@ -93,21 +139,23 @@ export async function probeGoogleBooksConnection(
   httpRequest: ConnectionHttpRequest = defaultConnectionRequest,
 ): Promise<ApiConnectionResult> {
   const trimmed = apiKey.trim();
-  if (!trimmed) {
-    return notConfiguredConnectionResult('Link a Google Books API key above, then run Test connection.');
-  }
+  const authRoute = resolveGoogleBooksAuthRoute(trimmed);
 
   const url = new URL(GOOGLE_PROBE_URL);
   url.searchParams.set('q', 'connection-test');
   url.searchParams.set('maxResults', '1');
-  url.searchParams.set('key', trimmed);
+  if (trimmed) {
+    url.searchParams.set('key', trimmed);
+  }
 
   try {
-    return mapHttpStatusToConnectionResult((await httpRequest(url.href)).status);
+    const { status, bodyText } = await httpRequest(url.href);
+    return mapGoogleBooksConnectionResult(status, bodyText, authRoute);
   } catch {
     return {
       outcome: 'network_error',
-      detail: 'Could not reach Google Books. Check your network, firewall, or VPN, then try again.',
+      authRoute,
+      detail: `${authRoutePrefix(authRoute)} could not reach Google Books. Check network, firewall, or VPN.`,
     };
   }
 }

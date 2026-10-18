@@ -36,7 +36,8 @@
     "release-minor": "standard-version --release-as minor",
     "release-minor-test": "standard-version --dry-run --release-as minor",
     "prepare": "husky",
-    "deploy:pages": "gh-pages -d pages"
+    "deploy:pages": "gh-pages -d pages",
+    "smoke:google-books-hammer": "node scripts/smoke-google-books-hammer.mjs"
   },
   "devDependencies": {
     "@popperjs/core": "^2.11.8",

@@ -1,5 +1,7 @@
-import { apiGet, BaseBooksApiImpl } from '@apis/base_api';
+import { apiGetHttp, BaseBooksApiImpl } from '@apis/base_api';
 import { Book } from '@models/book.model';
+import { resolveGoogleBooksAuthRoute } from './google_books_auth';
+import { GoogleBooksApiError, parseGoogleBooksErrorBody, userMessageForGoogleBooksError } from './google_books_errors';
 import { GoogleBooksResponse, VolumeInfo } from './models/google_books_response';
 
 export class GoogleBooksApi implements BaseBooksApiImpl {
@@ -33,7 +35,13 @@ export class GoogleBooksApi implements BaseBooksApiImpl {
   async getByQuery(query: string, options?: Record<string, string>): Promise<Book[]> {
     try {
       const params = this.buildSearchParams(query, options);
-      const searchResults = await apiGet<GoogleBooksResponse>('https://www.googleapis.com/books/v1/volumes', params);
+      const authRoute = resolveGoogleBooksAuthRoute(this.apiKey);
+      const http = await apiGetHttp<GoogleBooksResponse>('https://www.googleapis.com/books/v1/volumes', params);
+      if (http.status >= 400) {
+        const parsed = parseGoogleBooksErrorBody(http.status, http.bodyText);
+        throw new GoogleBooksApiError(userMessageForGoogleBooksError(parsed, authRoute), authRoute, http.status);
+      }
+      const searchResults = http.data;
       if (!searchResults?.totalItems) return [];
       return searchResults.items.map(({ volumeInfo }) => this.createBookItem(volumeInfo));
     } catch (error) {
