@@ -1,12 +1,14 @@
 import { replaceDateInString } from '@utils/utils';
-import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting } from 'obsidian';
 
 import { ServiceProvider } from '@src/constants';
 import languages from '@utils/languages';
 import { SettingServiceProviderModal } from '@views/setting_service_provider_modal';
 import BookSearchPlugin from '../main';
+import { probeGoogleBooksConnection } from './api_connection_probe';
+import { mountApiConnectionUi } from './api_connection_ui';
 import { addSecretLinkSetting } from './secret_link';
-import { DEFAULT_SECRET_POINTERS, linkedSecretLabel, resolveSecretId, SECRET_IDS } from './secrets';
+import { DEFAULT_SECRET_POINTERS, resolveSecretId, SECRET_IDS } from './secrets';
 import { FileNameFormatSuggest } from './suggesters/FileNameFormatSuggester';
 import { FileSuggest } from './suggesters/FileSuggester';
 import { FolderSuggest } from './suggesters/FolderSuggester';
@@ -349,28 +351,6 @@ export class BookSearchSettingTab extends PluginSettingTab {
       );
 
     const apiKeySecretId = resolveSecretId(this.plugin.settings.apiKeySecretId, SECRET_IDS.googleApiKey);
-    const apiKeyLength = this.plugin.settings.apiKey?.length ?? 0;
-
-    new Setting(containerEl)
-      .setName('Keychain status')
-      .setDesc('Shows whether a Google Books API key is linked. It does not guarantee that the key is valid.')
-      .addButton(button => {
-        button.setButtonText('API Check').onClick(async () => {
-          await this.plugin.hydrateSecrets();
-          const length = this.plugin.settings.apiKey?.length ?? 0;
-          if (length) {
-            new Notice(`API key configured (${length} characters).`);
-          } else {
-            new Notice('API key does not exist.');
-          }
-        });
-      });
-
-    const statusEl = containerEl.createDiv({
-      cls: 'book-search-plugin__secret-status',
-      attr: { 'data-secret-status': apiKeyLength > 0 ? 'configured' : 'empty' },
-    });
-    statusEl.setText(linkedSecretLabel(apiKeySecretId, apiKeyLength));
 
     addSecretLinkSetting(this.app, containerEl, {
       name: 'Google Books API key',
@@ -381,6 +361,17 @@ export class BookSearchSettingTab extends PluginSettingTab {
         await this.plugin.hydrateSecrets();
         await this.plugin.saveSettings();
         this.display();
+      },
+    });
+
+    mountApiConnectionUi({
+      containerEl,
+      name: 'Google Books API connection',
+      desc: 'Live check against Google Books using your linked key (same as search).',
+      isConfigured: () => (this.plugin.settings.apiKey?.trim().length ?? 0) > 0,
+      runProbe: async () => {
+        await this.plugin.hydrateSecrets();
+        return probeGoogleBooksConnection(this.plugin.settings.apiKey);
       },
     });
   }

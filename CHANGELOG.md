@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [Unreleased]
 
+### [0.7.6-beta.3](https://github.com/adrianghnguyen/obsidian-book-search-plugin/compare/0.7.6-beta.2...0.7.6-beta.3) (2026-10-18)
+
+### Added
+
+* **Test connection** for Google Books and Naver: live HTTP probe using hydrated secrets (same keys as search), with per-provider status lines and (i) tooltips for details
+
+### Changed
+
+* Replaced **Keychain status** / character-count labels with **API connection** status (Not configured, Checking…, Connected, and failure variants)
+
 ### [0.7.6-beta.2](https://github.com/adrianghnguyen/obsidian-book-search-plugin/compare/0.7.6-beta.1...0.7.6-beta.2) (2026-10-17)
 
 ### Added
