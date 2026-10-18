@@ -38,6 +38,7 @@ export interface ApiHttpResponse<T = unknown> {
   status: number;
   bodyText: string;
   data: T | null;
+  headers: Record<string, string>;
 }
 
 function readResponseBody(res: Awaited<ReturnType<typeof requestUrl>>): { bodyText: string; data: unknown } {
@@ -70,7 +71,7 @@ export async function apiGetHttp<T>(
   });
 
   const { bodyText, data } = readResponseBody(res);
-  return { status: res.status, bodyText, data: data as T | null };
+  return { status: res.status, bodyText, data: data as T | null, headers: res.headers ?? {} };
 }
 
 export async function apiGet<T>(

@@ -4,6 +4,7 @@ export interface ParsedGoogleBooksError {
   httpStatus: number;
   legacyReason?: string;
   errorInfoReason?: string;
+  rpcStatus?: string;
   quotaLimit?: string;
   consumer?: string;
   message?: string;
@@ -39,6 +40,7 @@ export function parseGoogleBooksErrorBody(httpStatus: number, bodyText: string):
       };
     };
     parsed.message = body.error?.message;
+    parsed.rpcStatus = body.error?.status;
     parsed.legacyReason = body.error?.errors?.[0]?.reason;
     const errorInfo = body.error?.details?.find(d => d.reason || d.metadata);
     parsed.errorInfoReason = errorInfo?.reason;
@@ -64,12 +66,33 @@ function isUnregisteredReason(parsed: ParsedGoogleBooksError): boolean {
   return /Unreg$/i.test(reason) || reason === 'dailyLimitExceededUnreg';
 }
 
+function isBackendUnavailable(parsed: ParsedGoogleBooksError): boolean {
+  const reason = parsed.legacyReason ?? parsed.errorInfoReason ?? '';
+  return (
+    parsed.httpStatus === 503 ||
+    parsed.rpcStatus === 'UNAVAILABLE' ||
+    reason === 'backendError' ||
+    reason === 'SERVICE_UNAVAILABLE'
+  );
+}
+
 export function userMessageForGoogleBooksError(
   parsed: ParsedGoogleBooksError,
   authRoute: GoogleBooksAuthRoute,
 ): string {
   const prefix = authRoutePrefix(authRoute);
   const reason = parsed.legacyReason ?? parsed.errorInfoReason ?? '';
+
+  if (authRoute === 'api_key' && isAnonymousConsumer(parsed)) {
+    return `${prefix} Google responded as the shared anonymous pool even though Settings expects your API key — secrets may not have loaded before search. Open Settings, confirm the route line, and try again.`;
+  }
+
+  if (isBackendUnavailable(parsed)) {
+    if (authRoute === 'api_key') {
+      return `${prefix} Google Books backend temporarily unavailable (HTTP 503). This request used your linked key — wait a minute and retry.`;
+    }
+    return `${prefix} Google Books backend unavailable (HTTP 503). Link your own API key in Settings for more reliable search.`;
+  }
 
   if (authRoute === 'anonymous_pool' || isAnonymousConsumer(parsed) || isUnregisteredReason(parsed)) {
     if (parsed.httpStatus === 429 || reason.includes('LimitExceeded') || parsed.quotaLimit) {

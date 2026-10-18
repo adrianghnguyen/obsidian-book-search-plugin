@@ -1,5 +1,6 @@
-import { Setting } from 'obsidian';
+import { setIcon, setTooltip, Setting } from 'obsidian';
 import { googleBooksAuthRouteLabel, resolveGoogleBooksAuthRoute } from '@apis/google_books_auth';
+import { GOOGLE_BOOKS_KEYED_RATE_HINT } from '@apis/google_books_throttle';
 
 export function mountGoogleBooksRouteSetting(
   containerEl: HTMLElement,
@@ -12,6 +13,11 @@ export function mountGoogleBooksRouteSetting(
     cls: 'book-search-plugin__google-route-line',
     text: '',
   });
+
+  const rateHintEl = setting.controlEl.createSpan({ cls: 'book-search-plugin__google-route-info' });
+  setIcon(rateHintEl, 'info');
+  setTooltip(rateHintEl, GOOGLE_BOOKS_KEYED_RATE_HINT, { delay: 300 });
+  rateHintEl.setAttr('aria-label', GOOGLE_BOOKS_KEYED_RATE_HINT);
 
   const paint = (): void => {
     const route = resolveGoogleBooksAuthRoute(getApiKey());

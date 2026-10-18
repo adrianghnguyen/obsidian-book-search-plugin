@@ -1,3 +1,4 @@
+import { googleBooksRequestGate } from '@apis/google_books_request_gate';
 import {
   mapGoogleBooksConnectionResult,
   mapHttpStatusToConnectionResult,
@@ -7,6 +8,9 @@ import {
 } from './api_connection_probe';
 
 describe('api connection probe', () => {
+  beforeEach(() => {
+    googleBooksRequestGate.resetForTests();
+  });
   const mockRequest =
     (status: number): ConnectionHttpRequest =>
     async () => ({ status });

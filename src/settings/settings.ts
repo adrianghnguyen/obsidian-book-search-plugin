@@ -5,6 +5,8 @@ import { ServiceProvider } from '@src/constants';
 import languages from '@utils/languages';
 import { SettingServiceProviderModal } from '@views/setting_service_provider_modal';
 import BookSearchPlugin from '../main';
+import { resolveGoogleBooksAuthRoute } from '@apis/google_books_auth';
+import { googleBooksRequestGate } from '@apis/google_books_request_gate';
 import { probeGoogleBooksConnection } from './api_connection_probe';
 import { mountApiConnectionUi } from './api_connection_ui';
 import { mountGoogleBooksRouteSetting } from './google_books_route_setting';
@@ -375,6 +377,11 @@ export class BookSearchSettingTab extends PluginSettingTab {
       isConfigured: () => true,
       readyDetail:
         'Tests the active search route shown above. Outcomes name whether the failure is on your API key or the shared anonymous pool.',
+      googleBooksCooldown: {
+        isActive: () => googleBooksRequestGate.isInCooldown(),
+        statusLine: () => googleBooksRequestGate.statusLine(resolveGoogleBooksAuthRoute(this.plugin.settings.apiKey)),
+        subscribe: listener => googleBooksRequestGate.subscribe(listener),
+      },
       runProbe: async () => {
         await this.plugin.hydrateSecrets();
         routeSetting.refresh();

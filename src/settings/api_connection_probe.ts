@@ -1,5 +1,7 @@
 import { connectionDetailForGoogleBooksError, parseGoogleBooksErrorBody } from '@apis/google_books_errors';
 import { authRoutePrefix, resolveGoogleBooksAuthRoute, type GoogleBooksAuthRoute } from '@apis/google_books_auth';
+import { googleBooksRequestGate } from '@apis/google_books_request_gate';
+import { GoogleBooksThrottleError, parseRetryAfterSeconds } from '@apis/google_books_throttle';
 import { requestUrl } from 'obsidian';
 
 export type ApiConnectionOutcome =
@@ -22,7 +24,7 @@ export interface ApiConnectionResult {
 export type ConnectionHttpRequest = (
   url: string,
   headers?: Record<string, string>,
-) => Promise<{ status: number; bodyText?: string }>;
+) => Promise<{ status: number; bodyText?: string; responseHeaders?: Record<string, string> }>;
 
 const GOOGLE_PROBE_URL = 'https://www.googleapis.com/books/v1/volumes';
 const NAVER_PROBE_URL = 'https://openapi.naver.com/v1/search/book.json';
@@ -116,7 +118,7 @@ export function notConfiguredConnectionResult(detail: string): ApiConnectionResu
 async function defaultConnectionRequest(
   url: string,
   headers?: Record<string, string>,
-): Promise<{ status: number; bodyText?: string }> {
+): Promise<Awaited<ReturnType<ConnectionHttpRequest>>> {
   const res = await requestUrl({
     url,
     method: 'GET',
@@ -131,7 +133,7 @@ async function defaultConnectionRequest(
       : res.json === undefined || res.json === null
         ? ''
         : JSON.stringify(res.json);
-  return { status: res.status, bodyText };
+  return { status: res.status, bodyText, responseHeaders: res.headers ?? {} };
 }
 
 export async function probeGoogleBooksConnection(
@@ -149,9 +151,21 @@ export async function probeGoogleBooksConnection(
   }
 
   try {
-    const { status, bodyText } = await httpRequest(url.href);
+    googleBooksRequestGate.assertCanRequest(authRoute);
+    googleBooksRequestGate.recordRequestStarted(authRoute);
+    const { status, bodyText, responseHeaders } = await httpRequest(url.href);
+    if (status === 429) {
+      googleBooksRequestGate.register429(authRoute, parseRetryAfterSeconds(responseHeaders));
+    }
     return mapGoogleBooksConnectionResult(status, bodyText, authRoute);
-  } catch {
+  } catch (error) {
+    if (error instanceof GoogleBooksThrottleError) {
+      return {
+        outcome: 'quota_exceeded',
+        authRoute: error.authRoute,
+        detail: error.message,
+      };
+    }
     return {
       outcome: 'network_error',
       authRoute,

@@ -59,6 +59,38 @@ describe('google books errors', () => {
     expect(msg).toMatch(/100\/min/i);
   });
 
+  it('maps keyed HTTP 503 as backend unavailable (not missing key)', () => {
+    const body = JSON.stringify({
+      error: {
+        code: 503,
+        message: 'The service is currently unavailable.',
+        status: 'UNAVAILABLE',
+        errors: [{ reason: 'backendError', domain: 'global' }],
+      },
+    });
+    const parsed = parseGoogleBooksErrorBody(503, body);
+    const msg = userMessageForGoogleBooksError(parsed, 'api_key');
+    expect(msg).toContain('Your API key:');
+    expect(msg).toMatch(/backend temporarily unavailable/i);
+    expect(msg).toMatch(/linked key/i);
+    expect(msg).not.toMatch(/Add your own Google Books API key/i);
+  });
+
+  it('maps anonymous HTTP 503 toward linking a key', () => {
+    const body = JSON.stringify({
+      error: {
+        code: 503,
+        status: 'UNAVAILABLE',
+        errors: [{ reason: 'backendError' }],
+      },
+    });
+    const parsed = parseGoogleBooksErrorBody(503, body);
+    const msg = userMessageForGoogleBooksError(parsed, 'anonymous_pool');
+    expect(msg).toContain('Shared anonymous pool:');
+    expect(msg).toMatch(/backend unavailable/i);
+    expect(msg).toMatch(/Link your own API key/i);
+  });
+
   it('maps unregistered 403', () => {
     const body = JSON.stringify({
       error: {

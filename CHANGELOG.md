@@ -9,12 +9,15 @@ All notable changes to this project will be documented in this file. See [standa
 * **Google Books search route** line in Settings (your API key vs shared anonymous pool)
 * **`pnpm run smoke:google-books-hammer`** — live 5-in-20s keyed hammer smoke (requires `GOOGLE_BOOKS_API_KEY`)
 * Error parsing for Google Books HTTP bodies (quota, invalid key, API disabled, anonymous pool)
+* Google Books **rate-limit cooldown** UI after HTTP 429 (live countdown; keyed proactive guard at ~95/min)
 
 ### Changed
 
 * Search and **Test connection** failures prefix messages with **Your API key:** or **Shared anonymous pool:**
 * **Test connection** works without a linked key (probes the anonymous route)
 * Google API settings copy explains anonymous pool limits vs your own key
+* **Search modal** calls `hydrateSecrets()` before every Google Books search so linked keys are included on the request URL
+* HTTP **503** / `UNAVAILABLE` errors distinguish Google backend overload from anonymous-pool quota issues
 
 ### [0.7.6-beta.3](https://github.com/adrianghnguyen/obsidian-book-search-plugin/compare/0.7.6-beta.2...0.7.6-beta.3) (2026-10-18)
 
