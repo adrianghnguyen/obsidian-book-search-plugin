@@ -4,50 +4,30 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [Unreleased]
 
+## [0.7.6](https://github.com/adrianghnguyen/obsidian-book-search-plugin/compare/0.7.5...0.7.6) (2026-10-18)
+
 ### Added
 
+* Store Google Books and Naver API credentials in Obsidian secretStorage (OS keychain) instead of synced `data.json`
+* Google Books and Naver API key settings use Obsidian's native Secret Storage picker so you can link an existing OS key (or create one) without pasting into a password box
+* Settings password fields stay empty, show configured/masked status, keep the existing key on empty Save, and require an explicit Clear to delete
+* Cloud E2E secret bindings map `GOOGLE_BOOKS_API_KEY` / `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` to stable secret ids
+* **Test connection** for Google Books and Naver: live HTTP probe using hydrated secrets (same keys as search), with per-provider status lines and (i) tooltips for details
 * **Google Books search route** line in Settings (your API key vs shared anonymous pool)
-* **`pnpm run smoke:google-books-hammer`** — live 5-in-20s keyed hammer smoke (requires `GOOGLE_BOOKS_API_KEY`)
 * Error parsing for Google Books HTTP bodies (quota, invalid key, API disabled, anonymous pool)
 * Google Books **rate-limit cooldown** UI after HTTP 429 (live countdown; keyed proactive guard at ~95/min)
 
 ### Changed
 
+* Replaced **Keychain status** / character-count labels with **API connection** status (Not configured, Checking…, Connected, and failure variants)
+* Settings tab shows maintainer Adrian Nguyen and a short forked-from credit for anpigon/obsidian-book-search-plugin
+* Plugin author in `manifest.json` is Adrian Nguyen (`https://github.com/adrianghnguyen`); the original project is credited as a fork, not as the live author
+* Minimum Obsidian version is 1.11.4 for SecretComponent / secretStorage link UI
 * Search and **Test connection** failures prefix messages with **Your API key:** or **Shared anonymous pool:**
 * **Test connection** works without a linked key (probes the anonymous route)
 * Google API settings copy explains anonymous pool limits vs your own key
 * **Search modal** calls `hydrateSecrets()` before every Google Books search so linked keys are included on the request URL
 * HTTP **503** / `UNAVAILABLE` errors distinguish Google backend overload from anonymous-pool quota issues
-
-### [0.7.6-beta.3](https://github.com/adrianghnguyen/obsidian-book-search-plugin/compare/0.7.6-beta.2...0.7.6-beta.3) (2026-10-18)
-
-### Added
-
-* **Test connection** for Google Books and Naver: live HTTP probe using hydrated secrets (same keys as search), with per-provider status lines and (i) tooltips for details
-
-### Changed
-
-* Replaced **Keychain status** / character-count labels with **API connection** status (Not configured, Checking…, Connected, and failure variants)
-
-### [0.7.6-beta.2](https://github.com/adrianghnguyen/obsidian-book-search-plugin/compare/0.7.6-beta.1...0.7.6-beta.2) (2026-10-17)
-
-### Added
-
-* Google Books and Naver API key settings use Obsidian's native Secret Storage picker so you can link an existing OS key (or create one) without pasting into a password box
-* Settings tab shows maintainer Adrian Nguyen and a short forked-from credit for anpigon/obsidian-book-search-plugin
-
-### Changed
-
-* Plugin author in `manifest.json` is Adrian Nguyen (`https://github.com/adrianghnguyen`); the original project is credited as a fork, not as the live author
-* Minimum Obsidian version is 1.11.4 for SecretComponent / secretStorage link UI
-
-### [0.7.6-beta.1](https://github.com/adrianghnguyen/obsidian-book-search-plugin/compare/0.7.5...0.7.6-beta.1) (2026-10-17)
-
-### Added
-
-* Store Google Books and Naver API credentials in Obsidian secretStorage (OS keychain) instead of synced `data.json`
-* Settings password fields stay empty, show configured/masked status, keep the existing key on empty Save, and require an explicit Clear to delete
-* Cloud E2E secret bindings map `GOOGLE_BOOKS_API_KEY` / `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` to stable secret ids
 
 ### [0.7.5](https://github.com/anpigon/obsidian-book-search-plugin/compare/0.7.4...0.7.5) (2024-10-16)
 
