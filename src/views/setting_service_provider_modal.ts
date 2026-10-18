@@ -1,12 +1,15 @@
 import { ServiceProvider } from '@src/constants';
 import BookSearchPlugin from '@src/main';
+import { probeNaverBooksConnection } from '@settings/api_connection_probe';
+import { mountApiConnectionUi } from '@settings/api_connection_ui';
 import { addSecretLinkSetting } from '@settings/secret_link';
-import { linkedSecretLabel, resolveSecretId, SECRET_IDS } from '@settings/secrets';
+import { resolveSecretId, SECRET_IDS } from '@settings/secrets';
 import { Modal, Notice, Setting } from 'obsidian';
 
 export class SettingServiceProviderModal extends Modal {
   private readonly plugin: BookSearchPlugin;
   private readonly currentServiceProvider: ServiceProvider;
+  private apiConnectionUi?: ReturnType<typeof mountApiConnectionUi>;
 
   constructor(
     plugin: BookSearchPlugin,
@@ -31,19 +34,6 @@ export class SettingServiceProviderModal extends Modal {
 
     const clientIdSecretId = resolveSecretId(this.settings.naverClientIdSecretId, SECRET_IDS.naverClientId);
     const clientSecretSecretId = resolveSecretId(this.settings.naverClientSecretSecretId, SECRET_IDS.naverClientSecret);
-    const clientIdLength = this.settings.naverClientId?.length ?? 0;
-    const clientSecretLength = this.settings.naverClientSecret?.length ?? 0;
-
-    contentEl.createDiv({
-      cls: 'book-search-plugin__secret-status',
-      attr: { 'data-secret-status': clientIdLength > 0 ? 'configured' : 'empty' },
-      text: `Client ID: ${linkedSecretLabel(clientIdSecretId, clientIdLength)}`,
-    });
-    contentEl.createDiv({
-      cls: 'book-search-plugin__secret-status',
-      attr: { 'data-secret-status': clientSecretLength > 0 ? 'configured' : 'empty' },
-      text: `Client Secret: ${linkedSecretLabel(clientSecretSecretId, clientSecretLength)}`,
-    });
 
     addSecretLinkSetting(this.app, contentEl, {
       name: 'Client ID',
@@ -53,6 +43,7 @@ export class SettingServiceProviderModal extends Modal {
         this.plugin.settings.naverClientIdSecretId = secretId || SECRET_IDS.naverClientId;
         await this.plugin.hydrateSecrets();
         await this.plugin.saveSettings();
+        this.apiConnectionUi?.refreshConfiguredState();
       },
     });
 
@@ -64,6 +55,20 @@ export class SettingServiceProviderModal extends Modal {
         this.plugin.settings.naverClientSecretSecretId = secretId || SECRET_IDS.naverClientSecret;
         await this.plugin.hydrateSecrets();
         await this.plugin.saveSettings();
+        this.apiConnectionUi?.refreshConfiguredState();
+      },
+    });
+
+    this.apiConnectionUi = mountApiConnectionUi({
+      containerEl: contentEl,
+      name: 'Naver API connection',
+      desc: 'Live check against Naver Open API using your linked Client ID and Secret.',
+      isConfigured: () =>
+        (this.settings.naverClientId?.trim().length ?? 0) > 0 &&
+        (this.settings.naverClientSecret?.trim().length ?? 0) > 0,
+      runProbe: async () => {
+        await this.plugin.hydrateSecrets();
+        return probeNaverBooksConnection(this.settings.naverClientId, this.settings.naverClientSecret);
       },
     });
 

@@ -1,12 +1,17 @@
 import { replaceDateInString } from '@utils/utils';
-import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting } from 'obsidian';
 
 import { ServiceProvider } from '@src/constants';
 import languages from '@utils/languages';
 import { SettingServiceProviderModal } from '@views/setting_service_provider_modal';
 import BookSearchPlugin from '../main';
+import { resolveGoogleBooksAuthRoute } from '@apis/google_books_auth';
+import { googleBooksRequestGate } from '@apis/google_books_request_gate';
+import { probeGoogleBooksConnection } from './api_connection_probe';
+import { mountApiConnectionUi } from './api_connection_ui';
+import { mountGoogleBooksRouteSetting } from './google_books_route_setting';
 import { addSecretLinkSetting } from './secret_link';
-import { DEFAULT_SECRET_POINTERS, linkedSecretLabel, resolveSecretId, SECRET_IDS } from './secrets';
+import { DEFAULT_SECRET_POINTERS, resolveSecretId, SECRET_IDS } from './secrets';
 import { FileNameFormatSuggest } from './suggesters/FileNameFormatSuggester';
 import { FileSuggest } from './suggesters/FileSuggester';
 import { FolderSuggest } from './suggesters/FolderSuggester';
@@ -345,32 +350,12 @@ export class BookSearchSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Description About Google API Settings')
       .setDesc(
-        'Use a Google Books API key if you hit rate limits. Link an existing Obsidian secret or create one here. The key stays in OS keychain, not in vault data.json.',
+        'Without a linked key, searches use Google’s shared anonymous pool (strict limits). Link your own Books API key for production use. Secrets stay in OS keychain, not vault data.json.',
       );
 
     const apiKeySecretId = resolveSecretId(this.plugin.settings.apiKeySecretId, SECRET_IDS.googleApiKey);
-    const apiKeyLength = this.plugin.settings.apiKey?.length ?? 0;
 
-    new Setting(containerEl)
-      .setName('Keychain status')
-      .setDesc('Shows whether a Google Books API key is linked. It does not guarantee that the key is valid.')
-      .addButton(button => {
-        button.setButtonText('API Check').onClick(async () => {
-          await this.plugin.hydrateSecrets();
-          const length = this.plugin.settings.apiKey?.length ?? 0;
-          if (length) {
-            new Notice(`API key configured (${length} characters).`);
-          } else {
-            new Notice('API key does not exist.');
-          }
-        });
-      });
-
-    const statusEl = containerEl.createDiv({
-      cls: 'book-search-plugin__secret-status',
-      attr: { 'data-secret-status': apiKeyLength > 0 ? 'configured' : 'empty' },
-    });
-    statusEl.setText(linkedSecretLabel(apiKeySecretId, apiKeyLength));
+    const routeSetting = mountGoogleBooksRouteSetting(containerEl, () => this.plugin.settings.apiKey);
 
     addSecretLinkSetting(this.app, containerEl, {
       name: 'Google Books API key',
@@ -379,8 +364,28 @@ export class BookSearchSettingTab extends PluginSettingTab {
       onChange: async secretId => {
         this.plugin.settings.apiKeySecretId = secretId || SECRET_IDS.googleApiKey;
         await this.plugin.hydrateSecrets();
+        routeSetting.refresh();
         await this.plugin.saveSettings();
         this.display();
+      },
+    });
+
+    mountApiConnectionUi({
+      containerEl,
+      name: 'Google Books API connection',
+      desc: 'Live check on the same route as search (your key or the shared anonymous pool).',
+      isConfigured: () => true,
+      readyDetail:
+        'Tests the active search route shown above. Outcomes name whether the failure is on your API key or the shared anonymous pool.',
+      googleBooksCooldown: {
+        isActive: () => googleBooksRequestGate.isInCooldown(),
+        statusLine: () => googleBooksRequestGate.statusLine(resolveGoogleBooksAuthRoute(this.plugin.settings.apiKey)),
+        subscribe: listener => googleBooksRequestGate.subscribe(listener),
+      },
+      runProbe: async () => {
+        await this.plugin.hydrateSecrets();
+        routeSetting.refresh();
+        return probeGoogleBooksConnection(this.plugin.settings.apiKey);
       },
     });
   }

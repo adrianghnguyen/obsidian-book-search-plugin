@@ -1,39 +1,34 @@
-import { apiGet, BaseBooksApiImpl } from '@apis/base_api';
+import { apiGetHttp, BaseBooksApiImpl } from '@apis/base_api';
 import { Book } from '@models/book.model';
+import { resolveGoogleBooksAuthRoute } from './google_books_auth';
+import { GoogleBooksApiError, parseGoogleBooksErrorBody, userMessageForGoogleBooksError } from './google_books_errors';
+import { googleBooksRequestGate } from './google_books_request_gate';
+import { buildGoogleBooksVolumeSearchParams } from './google_books_search_params';
+import { parseRetryAfterSeconds } from './google_books_throttle';
 import { GoogleBooksResponse, VolumeInfo } from './models/google_books_response';
 
 export class GoogleBooksApi implements BaseBooksApiImpl {
-  private static readonly MAX_RESULTS = 40;
-  private static readonly PRINT_TYPE = 'books';
-
   constructor(
     private readonly localePreference: string,
     private readonly enableCoverImageEdgeCurl: boolean,
     private readonly apiKey?: string,
   ) {}
 
-  private getLanguageRestriction(local: string): string {
-    return local === 'default' ? window.moment.locale() : local;
-  }
-
-  private buildSearchParams(query: string, options?: Record<string, string>): Record<string, string | number> {
-    const params: Record<string, string | number> = {
-      q: query,
-      maxResults: GoogleBooksApi.MAX_RESULTS,
-      printType: GoogleBooksApi.PRINT_TYPE,
-      langRestrict: this.getLanguageRestriction(options?.locale || this.localePreference),
-    };
-
-    if (this.apiKey) {
-      params['key'] = this.apiKey;
-    }
-    return params;
-  }
-
   async getByQuery(query: string, options?: Record<string, string>): Promise<Book[]> {
     try {
-      const params = this.buildSearchParams(query, options);
-      const searchResults = await apiGet<GoogleBooksResponse>('https://www.googleapis.com/books/v1/volumes', params);
+      const params = buildGoogleBooksVolumeSearchParams(query, this.localePreference, this.apiKey, options);
+      const authRoute = resolveGoogleBooksAuthRoute(this.apiKey);
+      googleBooksRequestGate.assertCanRequest(authRoute);
+      googleBooksRequestGate.recordRequestStarted(authRoute);
+      const http = await apiGetHttp<GoogleBooksResponse>('https://www.googleapis.com/books/v1/volumes', params);
+      if (http.status >= 400) {
+        if (http.status === 429) {
+          googleBooksRequestGate.register429(authRoute, parseRetryAfterSeconds(http.headers));
+        }
+        const parsed = parseGoogleBooksErrorBody(http.status, http.bodyText);
+        throw new GoogleBooksApiError(userMessageForGoogleBooksError(parsed, authRoute), authRoute, http.status);
+      }
+      const searchResults = http.data;
       if (!searchResults?.totalItems) return [];
       return searchResults.items.map(({ volumeInfo }) => this.createBookItem(volumeInfo));
     } catch (error) {
