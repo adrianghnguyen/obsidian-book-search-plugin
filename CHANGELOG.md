@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [Unreleased]
 
+## [0.8.0](https://github.com/adrianghnguyen/obsidian-book-search-plugin/compare/0.7.6...0.8.0) (2026-10-24)
+
+### Added
+
+* **Open Library** as the primary global book search provider (no API key required for the main query)
+* **Google Books fallback** when Open Library returns no matches — uses your linked API key only, never the shared anonymous pool
+* Settings toggle **Supplement with Google Books** to merge Google hits when Open Library already has results (requires linked key)
+* **Open Library contact email** setting for an identified User-Agent header (optional; helps with Open Library rate-limit courtesy)
+* Search modal **provider pill** showing which source is active (Open Library, Google Books fallback/supplement, or Naver) while a search runs
+* Cursor Cloud Agent environment pointer (`.cursor/environment.json`) for fork development builds
+
+### Changed
+
+* **Settings migration:** vaults still set to the legacy **Google** service provider are moved to the Open Library route; keyed Google behavior continues as fallback when Open Library is empty
+* Default service provider for new installs is **Open Library**; Settings copy describes Open Library-first routing and **Naver** for Korean search
+
 ## [0.7.6](https://github.com/adrianghnguyen/obsidian-book-search-plugin/compare/0.7.5...0.7.6) (2026-10-18)
 
 ### Added
