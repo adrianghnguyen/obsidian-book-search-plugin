@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [Unreleased]
 
+## [0.9.0](https://github.com/adrianghnguyen/obsidian-book-search-plugin/compare/0.8.0...0.9.0) (2026-10-24)
+
+### Added
+
+* **Open Library search fields** — results now include subtitle, publisher, subjects (categories), language, page count, and a first-sentence teaser when Open Library exposes them
+* **Cover sizes (S/M/L)** from Open Library `cover_i`, with ISBN-based cover URLs when only ISBN is available
+* **Lazy work enrichment** — after you pick an Open Library hit, one `works/OL…W.json` fetch fills a fuller **description** and backfills subtitle, subjects, or cover when search metadata was thin (no extra Google Books call)
+
+### Changed
+
+* Book notes and templates can receive **`language`** from Open Library metadata (new optional field on the book model)
+* Open Library selection runs enrichment before note creation so frontmatter and templates see the enriched metadata
+
 ## [0.8.0](https://github.com/adrianghnguyen/obsidian-book-search-plugin/compare/0.7.6...0.8.0) (2026-10-24)
 
 ### Added
