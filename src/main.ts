@@ -13,6 +13,7 @@ import {
   type SecretStore,
 } from '@settings/secrets';
 import { factoryServiceProvider } from '@apis/base_api';
+import { migrateGoogleServiceProviderToOpenLibrary } from '@settings/service_provider_migration';
 import {
   getTemplateContents,
   applyTemplateTransformations,
@@ -237,11 +238,12 @@ export default class BookSearchPlugin extends Plugin {
   async loadSettings() {
     const data = (await this.loadData()) as Partial<BookSearchPluginSettings> | undefined;
     this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+    const migratedServiceProvider = migrateGoogleServiceProviderToOpenLibrary(this.settings);
     try {
       const store = this.getSecretStore();
       const migrated = await migrateLegacySecrets(store, data);
       await hydrateSecrets(store, this.settings);
-      if (migrated) {
+      if (migrated || migratedServiceProvider) {
         await this.saveSettings();
       }
     } catch (err) {

@@ -18,18 +18,20 @@ class ConfigurationError extends Error {
   }
 }
 
+function createOpenLibraryRouteApi(settings: BookSearchPluginSettings, pluginVersion?: string): OpenLibraryRouteApi {
+  const openLibrary = new OpenLibraryBooksApi(settings.openLibraryContactEmail, pluginVersion);
+  const google =
+    settings.apiKey?.trim().length > 0
+      ? new GoogleBooksApi(settings.localePreference, settings.enableCoverImageEdgeCurl, settings.apiKey)
+      : null;
+  return new OpenLibraryRouteApi(openLibrary, google, settings.supplementWithGoogleBooks);
+}
+
 export function factoryServiceProvider(settings: BookSearchPluginSettings, pluginVersion?: string): BaseBooksApiImpl {
   switch (settings.serviceProvider) {
-    case ServiceProvider.openlibrary: {
-      const openLibrary = new OpenLibraryBooksApi(settings.openLibraryContactEmail, pluginVersion);
-      const google =
-        settings.apiKey?.trim().length > 0
-          ? new GoogleBooksApi(settings.localePreference, settings.enableCoverImageEdgeCurl, settings.apiKey)
-          : null;
-      return new OpenLibraryRouteApi(openLibrary, google, settings.supplementWithGoogleBooks);
-    }
+    case ServiceProvider.openlibrary:
     case ServiceProvider.google:
-      return new GoogleBooksApi(settings.localePreference, settings.enableCoverImageEdgeCurl, settings.apiKey);
+      return createOpenLibraryRouteApi(settings, pluginVersion);
     case ServiceProvider.naver:
       validateNaverSettings(settings);
       return new NaverBooksApi(settings.naverClientId, settings.naverClientSecret);

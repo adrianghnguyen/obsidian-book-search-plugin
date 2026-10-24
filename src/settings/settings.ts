@@ -221,12 +221,6 @@ export class BookSearchSettingTab extends PluginSettingTab {
         coverImageEdgeCurlToggleSetting.settingEl.addClass('book-search-plugin__hide');
       }
     };
-    const showCoverImageEdgeCurlToggle = () => {
-      if (coverImageEdgeCurlToggleSetting !== undefined) {
-        coverImageEdgeCurlToggleSetting.settingEl.removeClass('book-search-plugin__hide');
-      }
-    };
-
     const toggleServiceProviderExtraSettings = (
       serviceProvider: ServiceProvider = this.plugin.settings?.serviceProvider,
     ) => {
@@ -234,25 +228,26 @@ export class BookSearchSettingTab extends PluginSettingTab {
         showServiceProviderExtraSettingButton();
         hideServiceProviderExtraSettingDropdown();
         hideCoverImageEdgeCurlToggle();
-      } else if (serviceProvider === ServiceProvider.openlibrary) {
-        hideServiceProviderExtraSettingButton();
-        hideServiceProviderExtraSettingDropdown();
-        hideCoverImageEdgeCurlToggle();
       } else {
         hideServiceProviderExtraSettingButton();
         showServiceProviderExtraSettingDropdown();
-        showCoverImageEdgeCurlToggle();
+        hideCoverImageEdgeCurlToggle();
       }
     };
     new Setting(containerEl)
       .setName('Service Provider')
-      .setDesc('Choose the service provider you want to use to search your books.')
+      .setDesc(
+        'Global search uses Open Library first, with keyed Google Books as fallback when Open Library has no matches. Korean search uses Naver.',
+      )
       .setClass('book-search-plugin__settings--service_provider')
       .addDropdown(dropDown => {
-        dropDown.addOption(ServiceProvider.openlibrary, `${ServiceProvider.openlibrary} (Global, recommended)`);
-        dropDown.addOption(ServiceProvider.google, `${ServiceProvider.google} (Global)`);
+        dropDown.addOption(ServiceProvider.openlibrary, `${ServiceProvider.openlibrary} (Global)`);
         dropDown.addOption(ServiceProvider.naver, `${ServiceProvider.naver} (Korean)`);
-        dropDown.setValue(this.plugin.settings?.serviceProvider ?? ServiceProvider.openlibrary);
+        const providerValue =
+          this.plugin.settings?.serviceProvider === ServiceProvider.naver
+            ? ServiceProvider.naver
+            : ServiceProvider.openlibrary;
+        dropDown.setValue(providerValue);
         dropDown.onChange(async value => {
           const newValue = value as ServiceProvider;
           toggleServiceProviderExtraSettings(newValue);
@@ -286,7 +281,7 @@ export class BookSearchSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Supplement with Google Books')
       .setDesc(
-        'When Open Library is selected, also search Google Books using your linked API key (never the anonymous pool). Requires a Google Books API key below.',
+        'Optional: when Open Library returns results, also merge in Google Books hits (requires linked API key; never the anonymous pool). Fallback when Open Library is empty always uses your key when linked.',
       )
       .addToggle(toggle =>
         toggle.setValue(this.plugin.settings.supplementWithGoogleBooks).onChange(async value => {
