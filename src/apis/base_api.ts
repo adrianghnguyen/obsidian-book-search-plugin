@@ -4,9 +4,17 @@ import { ServiceProvider } from '@src/constants';
 import { requestUrl } from 'obsidian';
 import { GoogleBooksApi } from './google_books_api';
 import { NaverBooksApi } from './naver_books_api';
+import { OpenLibraryBooksApi } from './open_library_books_api';
+import { OpenLibraryRouteApi } from './open_library_route_api';
+
+import type { BookSearchLegId } from '@views/search_provider_pill';
+
+export interface BookSearchProgressCallbacks {
+  onLegStart?: (leg: BookSearchLegId) => void;
+}
 
 export interface BaseBooksApiImpl {
-  getByQuery(query: string, options?: Record<string, string>): Promise<Book[]>;
+  getByQuery(query: string, options?: Record<string, string>, progress?: BookSearchProgressCallbacks): Promise<Book[]>;
 }
 
 class ConfigurationError extends Error {
@@ -16,10 +24,20 @@ class ConfigurationError extends Error {
   }
 }
 
-export function factoryServiceProvider(settings: BookSearchPluginSettings): BaseBooksApiImpl {
+function createOpenLibraryRouteApi(settings: BookSearchPluginSettings, pluginVersion?: string): OpenLibraryRouteApi {
+  const openLibrary = new OpenLibraryBooksApi(settings.openLibraryContactEmail, pluginVersion);
+  const google =
+    settings.apiKey?.trim().length > 0
+      ? new GoogleBooksApi(settings.localePreference, settings.enableCoverImageEdgeCurl, settings.apiKey)
+      : null;
+  return new OpenLibraryRouteApi(openLibrary, google, settings.supplementWithGoogleBooks);
+}
+
+export function factoryServiceProvider(settings: BookSearchPluginSettings, pluginVersion?: string): BaseBooksApiImpl {
   switch (settings.serviceProvider) {
+    case ServiceProvider.openlibrary:
     case ServiceProvider.google:
-      return new GoogleBooksApi(settings.localePreference, settings.enableCoverImageEdgeCurl, settings.apiKey);
+      return createOpenLibraryRouteApi(settings, pluginVersion);
     case ServiceProvider.naver:
       validateNaverSettings(settings);
       return new NaverBooksApi(settings.naverClientId, settings.naverClientSecret);

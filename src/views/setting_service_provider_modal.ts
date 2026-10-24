@@ -17,7 +17,7 @@ export class SettingServiceProviderModal extends Modal {
   ) {
     super(plugin.app);
     this.plugin = plugin;
-    this.currentServiceProvider = plugin.settings?.serviceProvider ?? ServiceProvider.google;
+    this.currentServiceProvider = plugin.settings?.serviceProvider ?? ServiceProvider.openlibrary;
   }
 
   get settings() {

@@ -49,6 +49,7 @@ describe('BookSearchModal', () => {
 
     const plugin = {
       app: document.createElement('div') as unknown as import('obsidian').App,
+      manifest: { version: '0.7.6' },
       settings,
       hydrateSecrets: jest.fn(async () => {
         settings.apiKey = 'hydrated-key';
@@ -61,7 +62,11 @@ describe('BookSearchModal', () => {
     await modal.searchBook();
 
     expect(plugin.hydrateSecrets).toHaveBeenCalled();
-    expect(mockFactory).toHaveBeenLastCalledWith(expect.objectContaining({ apiKey: 'hydrated-key' }));
-    expect(mockGetByQuery).toHaveBeenCalledWith('flow', expect.any(Object));
+    expect(mockFactory).toHaveBeenLastCalledWith(expect.objectContaining({ apiKey: 'hydrated-key' }), '0.7.6');
+    expect(mockGetByQuery).toHaveBeenCalledWith(
+      'flow',
+      expect.any(Object),
+      expect.objectContaining({ onLegStart: expect.any(Function) }),
+    );
   });
 });

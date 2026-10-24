@@ -1,5 +1,5 @@
 import { Book } from '@models/book.model';
-import { apiGet, BaseBooksApiImpl } from './base_api';
+import { apiGet, BaseBooksApiImpl, BookSearchProgressCallbacks } from './base_api';
 import { NaverBookItem, NaverBooksResponse } from './models/naver_books_response';
 
 export class NaverBooksApi implements BaseBooksApiImpl {
@@ -8,8 +8,9 @@ export class NaverBooksApi implements BaseBooksApiImpl {
     private readonly clientSecret: string,
   ) {}
 
-  async getByQuery(query: string) {
+  async getByQuery(query: string, _options?: Record<string, string>, progress?: BookSearchProgressCallbacks) {
     try {
+      progress?.onLegStart?.('naver');
       const params = {
         query,
         display: 50,
