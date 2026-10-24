@@ -1,5 +1,6 @@
 import { App, SuggestModal } from 'obsidian';
 import { Book } from '@models/book.model';
+import { filterBooksBySimpleSearch } from '@utils/simple_search_filter';
 
 export class BookSuggestModal extends SuggestModal<Book> {
   showCoverImageInSearch: boolean;
@@ -16,14 +17,7 @@ export class BookSuggestModal extends SuggestModal<Book> {
 
   // Returns all available suggestions.
   getSuggestions(query: string): Book[] {
-    return this.suggestion.filter(book => {
-      const searchQuery = query?.toLowerCase();
-      return (
-        book.title?.toLowerCase().includes(searchQuery) ||
-        book.author?.toLowerCase().includes(searchQuery) ||
-        book.publisher?.toLowerCase().includes(searchQuery)
-      );
-    });
+    return filterBooksBySimpleSearch(this.suggestion, query ?? '');
   }
 
   // Renders each suggestion item.

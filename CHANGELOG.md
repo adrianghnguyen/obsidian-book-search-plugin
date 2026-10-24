@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file. See [standa
 
 ## [Unreleased]
 
+### Changed
+
+* Book pick modal and settings path suggesters filter with Obsidian `prepareSimpleSearch` (accent-insensitive on Obsidian 1.15+, token-based words) instead of raw `toLowerCase` + substring match
+
 ## [0.8.1](https://github.com/adrianghnguyen/obsidian-book-search-plugin/compare/0.8.0...0.8.1) (2026-10-24)
 
 ### Fixed

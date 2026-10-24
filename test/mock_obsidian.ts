@@ -113,3 +113,38 @@ export function setIcon(el: HTMLElement, icon: string): void {
 export function setTooltip(el: HTMLElement, tooltip: string, _options?: unknown): void {
   el.setAttr('data-tooltip', tooltip);
 }
+
+interface SearchResult {
+  score: number;
+  matches: number[][];
+}
+
+function foldLatinDiacritics(text: string): string {
+  return text.normalize('NFD').replace(/\p{M}/gu, '');
+}
+
+function caseInsensitiveSimpleSearch(searchTerm: string, phrase: string): SearchResult | null {
+  if (!searchTerm.trim()) {
+    return null;
+  }
+
+  const searchTerms = searchTerm.split(/\s+/).filter(Boolean);
+  const foldedPhrase = foldLatinDiacritics(phrase.toLowerCase());
+  const matches: number[][] = [];
+
+  for (const term of searchTerms) {
+    const foldedTerm = foldLatinDiacritics(term.toLowerCase());
+    const index = foldedPhrase.indexOf(foldedTerm);
+    if (index === -1) {
+      return null;
+    }
+    matches.push([index, index + foldedTerm.length]);
+  }
+
+  return matches.length > 0 ? { score: 0, matches } : null;
+}
+
+/** Test mock aligned with Obsidian prepareSimpleSearch (incl. accent folding on 1.15+). */
+export function prepareSimpleSearch(query: string): (text: string) => SearchResult | null {
+  return (text: string) => caseInsensitiveSimpleSearch(query, text);
+}
