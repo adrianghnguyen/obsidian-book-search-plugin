@@ -27,5 +27,7 @@ export interface Book {
   isbn?: string;
   link?: string;
   description?: string;
+  /** ISO 639 language code(s) when known (e.g. from Open Library). */
+  language?: string;
   previewLink?: string;
 }

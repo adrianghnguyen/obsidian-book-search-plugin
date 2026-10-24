@@ -13,6 +13,7 @@ import {
   type SecretStore,
 } from '@settings/secrets';
 import { factoryServiceProvider } from '@apis/base_api';
+import { enrichOpenLibraryBook } from '@apis/open_library_books_api';
 import { migrateGoogleServiceProviderToOpenLibrary } from '@settings/service_provider_migration';
 import {
   getTemplateContents,
@@ -64,7 +65,8 @@ export default class BookSearchPlugin extends Plugin {
   // open modal for book search
   async searchBookMetadata(query?: string): Promise<Book> {
     const searchedBooks = await this.openBookSearchModal(query);
-    return await this.openBookSuggestModal(searchedBooks);
+    const selected = await this.openBookSuggestModal(searchedBooks);
+    return enrichOpenLibraryBook(selected, this.settings.openLibraryContactEmail, this.manifest.version);
   }
 
   async getRenderedContents(book: Book) {
