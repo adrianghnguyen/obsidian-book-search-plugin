@@ -7,8 +7,14 @@ import { NaverBooksApi } from './naver_books_api';
 import { OpenLibraryBooksApi } from './open_library_books_api';
 import { OpenLibraryRouteApi } from './open_library_route_api';
 
+import type { BookSearchLegId } from '@views/search_provider_pill';
+
+export interface BookSearchProgressCallbacks {
+  onLegStart?: (leg: BookSearchLegId) => void;
+}
+
 export interface BaseBooksApiImpl {
-  getByQuery(query: string, options?: Record<string, string>): Promise<Book[]>;
+  getByQuery(query: string, options?: Record<string, string>, progress?: BookSearchProgressCallbacks): Promise<Book[]>;
 }
 
 class ConfigurationError extends Error {

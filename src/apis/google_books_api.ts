@@ -1,4 +1,4 @@
-import { apiGetHttp, BaseBooksApiImpl } from '@apis/base_api';
+import { apiGetHttp, BaseBooksApiImpl, BookSearchProgressCallbacks } from '@apis/base_api';
 import { Book } from '@models/book.model';
 import { resolveGoogleBooksAuthRoute } from './google_books_auth';
 import { GoogleBooksApiError, parseGoogleBooksErrorBody, userMessageForGoogleBooksError } from './google_books_errors';
@@ -14,8 +14,13 @@ export class GoogleBooksApi implements BaseBooksApiImpl {
     private readonly apiKey?: string,
   ) {}
 
-  async getByQuery(query: string, options?: Record<string, string>): Promise<Book[]> {
+  async getByQuery(
+    query: string,
+    options?: Record<string, string>,
+    progress?: BookSearchProgressCallbacks,
+  ): Promise<Book[]> {
     try {
+      progress?.onLegStart?.('google_books_fallback');
       const params = buildGoogleBooksVolumeSearchParams(query, this.localePreference, this.apiKey, options);
       const authRoute = resolveGoogleBooksAuthRoute(this.apiKey);
       googleBooksRequestGate.assertCanRequest(authRoute);

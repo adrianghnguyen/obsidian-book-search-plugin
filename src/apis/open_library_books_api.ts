@@ -1,4 +1,4 @@
-import { apiGetHttp, BaseBooksApiImpl } from '@apis/base_api';
+import { apiGetHttp, BaseBooksApiImpl, BookSearchProgressCallbacks } from '@apis/base_api';
 import { Book } from '@models/book.model';
 import { buildOpenLibraryUserAgent } from './open_library_user_agent';
 import { OpenLibrarySearchDoc, OpenLibrarySearchResponse } from './models/open_library_response';
@@ -96,12 +96,17 @@ export class OpenLibraryBooksApi implements BaseBooksApiImpl {
     private readonly pluginVersion: string | undefined,
   ) {}
 
-  async getByQuery(query: string, _options?: Record<string, string>): Promise<Book[]> {
+  async getByQuery(
+    query: string,
+    _options?: Record<string, string>,
+    progress?: BookSearchProgressCallbacks,
+  ): Promise<Book[]> {
     const trimmed = query.trim();
     if (!trimmed) {
       return [];
     }
 
+    progress?.onLegStart?.('open_library');
     const userAgent = buildOpenLibraryUserAgent(this.contactEmail, this.pluginVersion);
     const http = await apiGetHttp<OpenLibrarySearchResponse>(
       OPEN_LIBRARY_SEARCH_URL,

@@ -2,9 +2,14 @@ import { Book } from '@models/book.model';
 import { BaseBooksApiImpl } from './base_api';
 import { mergeBookSearchResults, OpenLibraryRouteApi } from './open_library_route_api';
 
-function stubProvider(results: Book[]): BaseBooksApiImpl {
+function stubProvider(results: Book[], leg?: import('@views/search_provider_pill').BookSearchLegId): BaseBooksApiImpl {
   return {
-    getByQuery: jest.fn().mockResolvedValue(results),
+    getByQuery: jest.fn(async (_query, _options, progress) => {
+      if (leg) {
+        progress?.onLegStart?.(leg);
+      }
+      return results;
+    }),
   };
 }
 
@@ -22,8 +27,20 @@ describe('mergeBookSearchResults', () => {
 });
 
 describe('OpenLibraryRouteApi fallback', () => {
+  it('reports google fallback leg via progress when Open Library is empty', async () => {
+    const openLibrary = stubProvider([], 'open_library');
+    const google = stubProvider([{ title: 'From Google', author: '', authors: [] }]);
+    const onLegStart = jest.fn();
+    const route = new OpenLibraryRouteApi(openLibrary as never, google as never, false);
+
+    await route.getByQuery('missing on ol', undefined, { onLegStart });
+
+    expect(onLegStart).toHaveBeenCalledWith('open_library');
+    expect(onLegStart).toHaveBeenCalledWith('google_books_fallback');
+  });
+
   it('calls Google only when Open Library is empty and Google is configured', async () => {
-    const openLibrary = stubProvider([]);
+    const openLibrary = stubProvider([], 'open_library');
     const google = stubProvider([{ title: 'From Google', author: '', authors: [] }]);
     const route = new OpenLibraryRouteApi(openLibrary as never, google as never, false);
 
@@ -35,7 +52,7 @@ describe('OpenLibraryRouteApi fallback', () => {
   });
 
   it('does not call Google when Open Library has hits and supplement is off', async () => {
-    const openLibrary = stubProvider([{ title: 'OL hit', author: '', authors: [] }]);
+    const openLibrary = stubProvider([{ title: 'OL hit', author: '', authors: [] }], 'open_library');
     const google = stubProvider([{ title: 'Google', author: '', authors: [] }]);
     const route = new OpenLibraryRouteApi(openLibrary as never, google as never, false);
 

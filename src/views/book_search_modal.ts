@@ -8,6 +8,7 @@ import { ServiceProvider } from '@src/constants';
 import BookSearchPlugin from '@src/main';
 import languages from '@utils/languages';
 import { ButtonComponent, Modal, Notice, Setting, TextComponent } from 'obsidian';
+import { applySearchProviderPill, BookSearchLegId, SearchProviderPillPhase } from './search_provider_pill';
 
 export class BookSearchModal extends Modal {
   private readonly SEARCH_BUTTON_TEXT = 'Search';
@@ -18,6 +19,8 @@ export class BookSearchModal extends Modal {
   private options: { locale: string };
   private cooldownEl?: HTMLElement;
   private unsubscribeCooldown?: () => void;
+  private providerPillEl?: HTMLElement;
+  private lastSearchLeg?: BookSearchLegId;
 
   constructor(
     private plugin: BookSearchPlugin,
@@ -43,6 +46,10 @@ export class BookSearchModal extends Modal {
       .setButtonText(busy ? this.REQUESTING_BUTTON_TEXT : this.SEARCH_BUTTON_TEXT);
   }
 
+  private defaultSearchLeg(): BookSearchLegId {
+    return this.plugin.settings.serviceProvider === ServiceProvider.naver ? 'naver' : 'open_library';
+  }
+
   private isGoogleProvider(): boolean {
     return this.plugin.settings.serviceProvider === ServiceProvider.google;
   }
@@ -53,6 +60,13 @@ export class BookSearchModal extends Modal {
 
   private isGoogleCooldownActive(): boolean {
     return this.isGoogleProvider() && googleBooksRequestGate.isInCooldown();
+  }
+
+  private paintProviderPill(phase: SearchProviderPillPhase, leg?: BookSearchLegId): void {
+    if (!this.providerPillEl) {
+      return;
+    }
+    applySearchProviderPill(this.providerPillEl, phase, leg, this.plugin.settings);
   }
 
   private paintGoogleCooldown(): void {
@@ -80,10 +94,21 @@ export class BookSearchModal extends Modal {
     }
 
     this.setBusy(true);
+    this.lastSearchLeg = undefined;
+    this.paintProviderPill('searching', this.defaultSearchLeg());
     try {
       await this.refreshSearchProvider();
-      const searchResults = await this.serviceProvider.getByQuery(this.query, this.options);
-      if (!searchResults?.length) return void new Notice(`No results found for "${this.query}"`);
+      const searchResults = await this.serviceProvider.getByQuery(this.query, this.options, {
+        onLegStart: leg => {
+          this.lastSearchLeg = leg;
+          this.paintProviderPill('searching', leg);
+        },
+      });
+      if (!searchResults?.length) {
+        this.paintProviderPill('done', this.lastSearchLeg ?? this.defaultSearchLeg());
+        return void new Notice(`No results found for "${this.query}"`);
+      }
+      this.paintProviderPill('done', this.lastSearchLeg ?? this.defaultSearchLeg());
       this.callback(null, searchResults);
       this.close();
     } catch (err) {
@@ -92,6 +117,7 @@ export class BookSearchModal extends Modal {
         new Notice(err.message);
         return;
       }
+      this.paintProviderPill('error', this.lastSearchLeg ?? this.defaultSearchLeg());
       this.callback(err as Error);
       this.close();
     } finally {
@@ -102,8 +128,11 @@ export class BookSearchModal extends Modal {
   onOpen(): void {
     const { contentEl } = this;
     contentEl.createEl('h2', { text: 'Search Book' });
-    if (this.plugin.settings.serviceProvider === ServiceProvider.google && this.plugin.settings.askForLocale)
+    this.providerPillEl = contentEl.createDiv({ cls: 'book-search-plugin__search-provider-pill' });
+    this.paintProviderPill('idle');
+    if (this.plugin.settings.serviceProvider !== ServiceProvider.naver && this.plugin.settings.askForLocale) {
       this.renderSelectLocale();
+    }
     contentEl.createDiv({ cls: 'book-search-plugin__search-modal--input' }, el => {
       new TextComponent(el)
         .setValue(this.query)

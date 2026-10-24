@@ -63,6 +63,10 @@ describe('BookSearchModal', () => {
 
     expect(plugin.hydrateSecrets).toHaveBeenCalled();
     expect(mockFactory).toHaveBeenLastCalledWith(expect.objectContaining({ apiKey: 'hydrated-key' }), '0.7.6');
-    expect(mockGetByQuery).toHaveBeenCalledWith('flow', expect.any(Object));
+    expect(mockGetByQuery).toHaveBeenCalledWith(
+      'flow',
+      expect.any(Object),
+      expect.objectContaining({ onLegStart: expect.any(Function) }),
+    );
   });
 });

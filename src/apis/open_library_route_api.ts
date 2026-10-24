@@ -1,5 +1,6 @@
 import { Book } from '@models/book.model';
-import { BaseBooksApiImpl } from './base_api';
+import { BaseBooksApiImpl, BookSearchProgressCallbacks } from './base_api';
+import type { BookSearchLegId } from '@views/search_provider_pill';
 import { GoogleBooksApi } from './google_books_api';
 import { OpenLibraryBooksApi } from './open_library_books_api';
 
@@ -32,8 +33,12 @@ export class OpenLibraryRouteApi implements BaseBooksApiImpl {
     private readonly supplementWithGoogleBooks: boolean,
   ) {}
 
-  async getByQuery(query: string, options?: Record<string, string>): Promise<Book[]> {
-    const openLibraryResults = await this.openLibrary.getByQuery(query, options);
+  async getByQuery(
+    query: string,
+    options?: Record<string, string>,
+    progress?: BookSearchProgressCallbacks,
+  ): Promise<Book[]> {
+    const openLibraryResults = await this.openLibrary.getByQuery(query, options, progress);
     const shouldQueryGoogle =
       this.google != null && (openLibraryResults.length === 0 || this.supplementWithGoogleBooks);
 
@@ -41,7 +46,11 @@ export class OpenLibraryRouteApi implements BaseBooksApiImpl {
       return openLibraryResults;
     }
 
+    const googleLeg: BookSearchLegId =
+      openLibraryResults.length === 0 ? 'google_books_fallback' : 'google_books_supplement';
+
     try {
+      progress?.onLegStart?.(googleLeg);
       const googleResults = await this.google!.getByQuery(query, options);
       if (openLibraryResults.length === 0) {
         return googleResults;
