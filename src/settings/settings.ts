@@ -32,6 +32,10 @@ export interface BookSearchPluginSettings {
   defaultFrontmatterKeyType: DefaultFrontmatterKeyType;
   templateFile: string;
   serviceProvider: ServiceProvider;
+  /** Contact email embedded in Open Library User-Agent (identified client). */
+  openLibraryContactEmail: string;
+  /** When using Open Library, also query Google Books if an API key is linked. */
+  supplementWithGoogleBooks: boolean;
   naverClientId: string;
   naverClientSecret: string;
   localePreference: string;
@@ -55,7 +59,9 @@ export const DEFAULT_SETTINGS: BookSearchPluginSettings = {
   useDefaultFrontmatter: true,
   defaultFrontmatterKeyType: DefaultFrontmatterKeyType.camelCase,
   templateFile: '',
-  serviceProvider: ServiceProvider.google,
+  serviceProvider: ServiceProvider.openlibrary,
+  openLibraryContactEmail: '',
+  supplementWithGoogleBooks: false,
   naverClientId: '',
   naverClientSecret: '',
   localePreference: 'default',
@@ -228,6 +234,10 @@ export class BookSearchSettingTab extends PluginSettingTab {
         showServiceProviderExtraSettingButton();
         hideServiceProviderExtraSettingDropdown();
         hideCoverImageEdgeCurlToggle();
+      } else if (serviceProvider === ServiceProvider.openlibrary) {
+        hideServiceProviderExtraSettingButton();
+        hideServiceProviderExtraSettingDropdown();
+        hideCoverImageEdgeCurlToggle();
       } else {
         hideServiceProviderExtraSettingButton();
         showServiceProviderExtraSettingDropdown();
@@ -239,9 +249,10 @@ export class BookSearchSettingTab extends PluginSettingTab {
       .setDesc('Choose the service provider you want to use to search your books.')
       .setClass('book-search-plugin__settings--service_provider')
       .addDropdown(dropDown => {
+        dropDown.addOption(ServiceProvider.openlibrary, `${ServiceProvider.openlibrary} (Global, recommended)`);
         dropDown.addOption(ServiceProvider.google, `${ServiceProvider.google} (Global)`);
         dropDown.addOption(ServiceProvider.naver, `${ServiceProvider.naver} (Korean)`);
-        dropDown.setValue(this.plugin.settings?.serviceProvider ?? ServiceProvider.google);
+        dropDown.setValue(this.plugin.settings?.serviceProvider ?? ServiceProvider.openlibrary);
         dropDown.onChange(async value => {
           const newValue = value as ServiceProvider;
           toggleServiceProviderExtraSettings(newValue);
@@ -256,6 +267,33 @@ export class BookSearchSettingTab extends PluginSettingTab {
           new SettingServiceProviderModal(this.plugin).open();
         });
       });
+
+    new Setting(containerEl)
+      .setName('Open Library contact email')
+      .setDesc(
+        'Optional email for the Open Library User-Agent header (higher rate limits). Leave blank to use the maintainer default.',
+      )
+      .addText(text =>
+        text
+          .setPlaceholder('you@example.com')
+          .setValue(this.plugin.settings.openLibraryContactEmail)
+          .onChange(async value => {
+            this.plugin.settings.openLibraryContactEmail = value.trim();
+            await this.plugin.saveSettings();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName('Supplement with Google Books')
+      .setDesc(
+        'When Open Library is selected, also search Google Books using your linked API key (never the anonymous pool). Requires a Google Books API key below.',
+      )
+      .addToggle(toggle =>
+        toggle.setValue(this.plugin.settings.supplementWithGoogleBooks).onChange(async value => {
+          this.plugin.settings.supplementWithGoogleBooks = value;
+          await this.plugin.saveSettings();
+        }),
+      );
 
     preferredLocaleDropdownSetting = new Setting(containerEl)
       .setName('Preferred locale')

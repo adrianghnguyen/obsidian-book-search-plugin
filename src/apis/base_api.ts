@@ -4,6 +4,8 @@ import { ServiceProvider } from '@src/constants';
 import { requestUrl } from 'obsidian';
 import { GoogleBooksApi } from './google_books_api';
 import { NaverBooksApi } from './naver_books_api';
+import { OpenLibraryBooksApi } from './open_library_books_api';
+import { OpenLibraryRouteApi } from './open_library_route_api';
 
 export interface BaseBooksApiImpl {
   getByQuery(query: string, options?: Record<string, string>): Promise<Book[]>;
@@ -16,8 +18,16 @@ class ConfigurationError extends Error {
   }
 }
 
-export function factoryServiceProvider(settings: BookSearchPluginSettings): BaseBooksApiImpl {
+export function factoryServiceProvider(settings: BookSearchPluginSettings, pluginVersion?: string): BaseBooksApiImpl {
   switch (settings.serviceProvider) {
+    case ServiceProvider.openlibrary: {
+      const openLibrary = new OpenLibraryBooksApi(settings.openLibraryContactEmail, pluginVersion);
+      const google =
+        settings.apiKey?.trim().length > 0
+          ? new GoogleBooksApi(settings.localePreference, settings.enableCoverImageEdgeCurl, settings.apiKey)
+          : null;
+      return new OpenLibraryRouteApi(openLibrary, google, settings.supplementWithGoogleBooks);
+    }
     case ServiceProvider.google:
       return new GoogleBooksApi(settings.localePreference, settings.enableCoverImageEdgeCurl, settings.apiKey);
     case ServiceProvider.naver:

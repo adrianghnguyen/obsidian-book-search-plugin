@@ -231,7 +231,7 @@ export default class BookSearchPlugin extends Plugin {
    */
   async queryBooks(query: string, options?: Record<string, string>): Promise<Book[]> {
     await this.hydrateSecrets();
-    return factoryServiceProvider(this.settings).getByQuery(query, options);
+    return factoryServiceProvider(this.settings, this.manifest.version).getByQuery(query, options);
   }
 
   async loadSettings() {

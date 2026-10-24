@@ -26,13 +26,13 @@ export class BookSearchModal extends Modal {
   ) {
     super(plugin.app);
     this.options = { locale: plugin.settings.localePreference };
-    this.serviceProvider = factoryServiceProvider(plugin.settings);
+    this.serviceProvider = factoryServiceProvider(plugin.settings, plugin.manifest.version);
   }
 
   /** Reload keychain secrets and rebuild the search client (key must be on the wire). */
   private async refreshSearchProvider(): Promise<void> {
     await this.plugin.hydrateSecrets();
-    this.serviceProvider = factoryServiceProvider(this.plugin.settings);
+    this.serviceProvider = factoryServiceProvider(this.plugin.settings, this.plugin.manifest.version);
   }
 
   setBusy(busy: boolean): void {
