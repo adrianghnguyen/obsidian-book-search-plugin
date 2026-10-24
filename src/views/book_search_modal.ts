@@ -128,8 +128,6 @@ export class BookSearchModal extends Modal {
   onOpen(): void {
     const { contentEl } = this;
     contentEl.createEl('h2', { text: 'Search Book' });
-    this.providerPillEl = contentEl.createDiv({ cls: 'book-search-plugin__search-provider-pill' });
-    this.paintProviderPill('idle');
     if (this.plugin.settings.serviceProvider !== ServiceProvider.naver && this.plugin.settings.askForLocale) {
       this.renderSelectLocale();
     }
@@ -145,7 +143,10 @@ export class BookSearchModal extends Modal {
       this.unsubscribeCooldown = googleBooksRequestGate.subscribe(() => this.paintGoogleCooldown());
       void this.refreshSearchProvider().then(() => this.paintGoogleCooldown());
     }
-    new Setting(this.contentEl).addButton(btn => {
+    const footerSetting = new Setting(this.contentEl).setClass('book-search-plugin__search-modal-footer');
+    this.providerPillEl = footerSetting.infoEl.createDiv({ cls: 'book-search-plugin__search-provider-pill' });
+    this.paintProviderPill('idle');
+    footerSetting.addButton(btn => {
       this.okBtnRef = btn
         .setButtonText(this.SEARCH_BUTTON_TEXT)
         .setCta()

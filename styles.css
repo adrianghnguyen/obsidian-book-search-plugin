@@ -103,8 +103,23 @@
   display: flex;
 }
 
+.book-search-plugin__search-modal-footer {
+  align-items: center;
+  border-top: none;
+  padding-top: 4px;
+}
+
+.book-search-plugin__search-modal-footer .setting-item-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.book-search-plugin__search-modal-footer .setting-item-control {
+  flex: 0 0 auto;
+}
+
 .book-search-plugin__search-provider-pill {
-  margin: 0 0 12px;
+  margin: 0;
 }
 
 .book-search-plugin__search-provider-pill-inner {
